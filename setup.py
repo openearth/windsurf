@@ -21,7 +21,7 @@ setup(
     ],
     test_suite='nose.collector',
     entry_points={'console_scripts': [
-        '{0} = windsurf.cmd:main'.format(
+        '{0} = windsurf.cmd:cmd'.format(
             'windsurf'),
     ]},
 )
