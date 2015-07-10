@@ -15,6 +15,9 @@ Options:
 __all__ = []
 
 
+from model import Windsurf
+
+
 def cmd():
     import docopt
     arguments = docopt.docopt(__doc__)
