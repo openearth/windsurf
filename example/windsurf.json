@@ -1,0 +1,18 @@
+{
+    "time" : {
+        "start" : 0.0,
+        "stop"  : 3600.0
+    },
+    "models" : {
+        "xbeach" : {
+            "engine" : "xbeach",
+            "engine_path" : "/Users/hoonhout/Checkouts/XBeach/branches/xbeach_bmi/src/xbeachlibrary/.libs/",
+            "configfile" : "params.txt"
+        },
+        "aeolis" : {
+            "engine" : "aeolis",
+            "engine_path" : "/Users/hoonhout/Github/aeolis/src/.libs/",
+            "configfile" : "aeolis.txt"
+        }
+    }
+}

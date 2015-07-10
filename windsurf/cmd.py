@@ -1,10 +1,14 @@
 '''windsurf : a composite model for simulating integrated nearshore and aeolian sediment transport
 
 Usage:
-    windsurf <config>
+    windsurf <config> [--verbose=LEVEL]
 
 Positional arguments:
     config             configuration file
+
+Options:
+    -h, --help         show this help message and exit
+    --verbose=LEVEL    print logging messages [default: 30]
 
 Options:
     -h, --help         show this help message and exit
@@ -12,9 +16,7 @@ Options:
 '''
 
 
-__all__ = []
-
-
+import logging
 from model import Windsurf
 
 
@@ -22,8 +24,17 @@ def cmd():
     import docopt
     arguments = docopt.docopt(__doc__)
 
-    w = Windsurf(arguments['<config>'])
-    w.run()
+    # initialize logger
+    if arguments['--verbose'] is not None:
+        logging.basicConfig(format='%(asctime)-15s %(name)-8s %(levelname)-8s %(message)s')
+        logging.root.setLevel(int(arguments['--verbose']))
+    else:
+        logging.root.setLevel(logging.NOTSET)
+
+    with Windsurf(arguments['<config>']) as w:
+        w.initialize()
+        w.update()
+        print w.models
 
 
 if __name__ == '__main__':

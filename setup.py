@@ -11,6 +11,7 @@ setup(
     install_requires=[
         'numpy',
         'docopt',
+        'bmi',
     ],
     setup_requires=[
         'sphinx',

@@ -7,10 +7,25 @@ Welcome to windsurf's documentation!
 ====================================
 
 Contents:
+---------
 
 .. toctree::
    :maxdepth: 2
 
+   windsurf
+   sourcecode
+
+Command-line tools
+------------------
+
+The Windsurf model can be executed from the command-line using the
+"windsurf" command.  See for more information the *--help* option.
+
+windsurf
+^^^^^^^^
+
+.. automodule:: windsurf.cmd
+                :members:
 
 
 Indices and tables

@@ -1,2 +1,6 @@
 *.pyc
 *.egg-info
+*.log
+*.dat
+*.bcf
+XB*.txt
