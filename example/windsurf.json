@@ -1,7 +1,7 @@
 {
     "time" : {
         "start" : 0.0,
-        "stop"  : 3600.0
+        "stop"  : 432000.0
     },
     "models" : {
         "xbeach" : {
@@ -15,6 +15,12 @@
             "configfile" : "aeolis.txt"
         }
     },
+    "exchange" : [
+        {"from" : "xbeach", "to" : "aeolis", "variable" : "zb"},
+        {"from" : "xbeach", "to" : "aeolis", "variable" : "zs"},
+        {"from" : "xbeach", "to" : "aeolis", "variable" : "Hrms"},
+        {"from" : "aeolis", "to" : "xbeach", "variable" : "zb"}
+    ],
     "regimes" : {
         "calm" : {
             "xbeach" : {
@@ -41,11 +47,10 @@
         "storm" : {
             "xbeach" : {
                 "instat" : "instat",
-                "morfac" : 1
+                "morfac" : 1.0
             },
             "aeolis" : {
                 "scheme" : "euler_forward",
-                "CFL" : 0.7,
                 "dt" : -1.0,
                 "accfac" : 1.0
             }

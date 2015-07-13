@@ -61,6 +61,8 @@ class Windsurf(IBmi):
 
         .. literalinclude:: ../example/windsurf.json
            :language: json
+
+        See for more information section :ref:`configuration`.
         '''
 
         if os.path.exists(self.configfile):
