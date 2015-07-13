@@ -57,28 +57,10 @@ class Windsurf(IBmi):
     def _load_configfile(self):
         '''Load configuration file
 
-        A minimal JSON configuration file contains the following:
+        A JSON configuration file may contain the following:
 
-        .. code-block:: json
-
-           {
-               "time" : {
-                   "start" : 0.0,
-                   "stop"  : 3600.0
-               },
-               "models" : {
-                   "xbeach" : {
-                       "engine" : "xbeach",
-                       "engine_path" : "",
-                       "configfile" : "params.txt"
-                   },
-                   "aeolis" : {
-                       "engine" : "aeolis",
-                       "engine_path" : "",
-                       "configfile" : "aeolis.txt"
-                   }
-               }
-           }
+        .. literalinclude:: ../example/windsurf.json
+           :language: json
         '''
 
         if os.path.exists(self.configfile):

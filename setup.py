@@ -25,4 +25,9 @@ setup(
         '{0} = windsurf.cmd:cmd'.format(
             'windsurf'),
     ]},
+    data_files=[
+        ('example', [
+            "example/",
+        ])
+    ],
 )

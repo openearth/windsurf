@@ -14,5 +14,48 @@
             "engine_path" : "/Users/hoonhout/Github/aeolis/src/.libs/",
             "configfile" : "aeolis.txt"
         }
-    }
+    },
+    "regimes" : {
+        "calm" : {
+            "xbeach" : {
+                "instat" : "stat",
+                "morfac" : 100.0
+            },
+            "aeolis" : {
+                "scheme" : "euler_backward",
+                "dt" : 3600.0,
+                "accfac" : 10.0
+            }
+        },
+        "windy" : {
+            "xbeach" : {
+                "instat" : "stat",
+                "morfac" : 10.0
+            },
+            "aeolis" : {
+                "scheme" : "euler_backward",
+                "dt" : 600.0,
+                "accfac" : 1.0
+            }
+        },
+        "storm" : {
+            "xbeach" : {
+                "instat" : "instat",
+                "morfac" : 1
+            },
+            "aeolis" : {
+                "scheme" : "euler_forward",
+                "CFL" : 0.7,
+                "dt" : -1.0,
+                "accfac" : 1.0
+            }
+        }
+    },
+    "scenario" : [
+        {"duration" : 86400, "regime" : "calm"},
+        {"duration" : 86400, "regime" : "windy"},
+        {"duration" : 86400, "regime" : "storm"},
+        {"duration" : 86400, "regime" : "windy"},
+        {"duration" : 86400, "regime" : "calm"}
+    ]
 }
