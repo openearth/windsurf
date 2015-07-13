@@ -70,7 +70,7 @@
     ],
     "netcdf" : {
         "outputfile" : "windsurf.nc",
-        "outputvars" : ['zb', 'zs', 'H', 'Ct'],
+        "outputvars" : ["zb", "zs", "H", "Ct"],
         "crs" : {
             "grid_mapping_name" : "oblique_stereographic",
             "epsg_code" : "EPSG:28992",

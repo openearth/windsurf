@@ -1,4 +1,5 @@
 import netCDF4
+from datetime import datetime
 
 
 def initialize(ncfile, dimensions, variables=None, attributes=None, crs=None):
@@ -196,7 +197,7 @@ def initialize(ncfile, dimensions, variables=None, attributes=None, crs=None):
         if variables is not None:
             for var, props in variables.iteritems():
 
-                nc.createVariable(var, 'float32', ['time'] + props['dimensions'])
+                nc.createVariable(var, 'float32', ['time'] + props['dimensions']) # FIXME
                 nc.variables[var].long_name = var
                 nc.variables[var].standard_name = ''
                 nc.variables[var].units = ''

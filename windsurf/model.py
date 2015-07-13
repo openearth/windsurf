@@ -40,7 +40,7 @@ class WindsurfWrapper:
 
         self.engine = Windsurf(self.configfile)
         self.engine.initialize()
-        self.output_init()
+        #self.output_init() # FIXME
 
         self.t = 0
         self.i = 0
@@ -67,7 +67,7 @@ class WindsurfWrapper:
                           variables={v:{'dimensions':self.engine.get_var_rank(v)}
                                      for v in cfg['outputvars']},
                           attributes=cfg['attributes'],
-                          crs=cfg['crs']):
+                          crs=cfg['crs'])
 
         
     def output_write(self):
@@ -92,11 +92,11 @@ class WindsurfWrapper:
 
         # x and y
         if len(cfg_xbeach) > 0:
-            dimensions['x'] = cfg_xbeach['nx'] + 1 # FIXME: read x.txt and y.txt
-            dimensions['y'] = cfg_xbeach['ny'] + 1 # FIXME: read x.txt and y.txt
+            dimensions['x'] = np.arange(cfg_xbeach['nx'] + 1) # FIXME: read x.txt and y.txt
+            dimensions['y'] = np.arange(cfg_xbeach['ny'] + 1) # FIXME: read x.txt and y.txt
         elif len(cfg_aeolis) > 0:
-            dimensions['x'] = cfg_aeolis['nx'] + 1 # FIXME: read x.txt and y.txt
-            dimensions['y'] = cfg_aeolis['ny'] + 1 # FIXME: read x.txt and y.txt
+            dimensions['x'] = np.arange(cfg_aeolis['nx'] + 1) # FIXME: read x.txt and y.txt
+            dimensions['y'] = np.arange(cfg_aeolis['ny'] + 1) # FIXME: read x.txt and y.txt
         else:
             dimensions['x'] = []
             dimensions['y'] = []
@@ -104,7 +104,7 @@ class WindsurfWrapper:
         # layers and fractions
         if len(cfg_aeolis) > 0:
             dimensions['layers'] = np.arange(cfg_aeolis['nlayers']) * cfg_aeolis['layer_thickness']
-            dimensions['fractions'] = cfg_aeolis['grain_size']
+            dimensions['fractions'] = [cfg_aeolis['grain_size']]
         else:
             dimensions['layers'] = []
             dimensions['fractions'] = []
@@ -501,8 +501,8 @@ class Windsurf(IBmi):
         return config
 
 
-    @abstractmethod
-    def parse_config_value(value):
+#    @abstractmethod
+    def parse_config_value(self, value): # FIXME: should be abstract
         '''Parse configuration value string to valid Python variable type
 
         Parameters
