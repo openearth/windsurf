@@ -1,4 +1,5 @@
 import os
+import re
 import time
 import json
 import logging
@@ -35,23 +36,27 @@ class WindsurfWrapper:
     def run(self):
         '''Start model time loop'''
 
-        with Windsurf(self.configfile) as w:
+        self.engine = Windsurf(self.configfile)
+        self.engine.initialize()
+
+        self.t = 0
+        self.i = 0
+        self.tlog = 0.0 # in real-world time
+        self.tlast = 0.0 # in simulation time
+        self.tstart = time.time() # in real-world time
+        self.tstop = self.engine.get_end_time() # in simulation time
         
-            w.initialize()
+        while self.t < self.tstop:
+            self.engine.update()
+            self.t = self.engine.get_current_time()
+            self.i += 1
+            self.progress()
+            self.tlast = self.t
 
-            self.t = 0
-            self.i = 0
-            self.tlog = 0.0 # in real-world time
-            self.tlast = 0.0 # in simulation time
-            self.tstart = time.time() # in real-world time
-            self.tstop = w.get_end_time() # in simulation time
 
-            while self.t < self.tstop:
-                w.update()
-                self.t = w.get_current_time()
-                self.i += 1
-                self.progress()
-                self.tlast = self.t
+    def output(self):
+        '''Write model data to output'''
+        pass
 
                 
     def progress(self, frac=.1):
@@ -67,7 +72,7 @@ class WindsurfWrapper:
         if (np.mod(self.t, self.tstop * frac) < self.t - self.tlast or \
             time.time() - self.tlog > 60.):
                     
-            p = self.t / self.tstop
+            p = min(1, self.t / self.tstop)
             dt1 = time.time() - self.tstart
             dt2 = dt1 / p
             dt3 = dt2 * (1-p)
@@ -169,48 +174,58 @@ class Windsurf(IBmi):
         return self.tstart
 
     
-    def get_var(self):
-        pass
+    def get_var(self, name):
+        '''Return array from model engine'''
+        engine, name = self._split_var(name)
+        return self.models[engine]['_wrapper'].get_var(name)
 
     
     def get_var_count(self):
-        pass
+        raise NotImplemented('BMI extended function "get_var_count" is not implemented yet')
 
     
-    def get_var_name(self):
-        pass
+    def get_var_name(self, i):
+        raise NotImplemented('BMI extended function "get_var_name" is not implemented yet')
 
     
-    def get_var_rank(self):
-        pass
+    def get_var_rank(self, name):
+        '''Return array rank or 0 for scalar'''
+        engine, name = self._split_var(name)
+        return self.models[engine]['_wrapper'].get_var_rank(name)
 
     
-    def get_var_shape(self):
-        pass
+    def get_var_shape(self, name):
+        '''Return array shape'''
+        engine, name = self._split_var(name)
+        return self.models[engine]['_wrapper'].get_var_shape(name)
 
     
-    def get_var_type(self):
-        pass
+    def get_var_type(self, name):
+        '''Return type string, compatible with numpy'''
+        engine, name = self._split_var(name)
+        return self.models[engine]['_wrapper'].get_var_type(name)
 
     
-    def inq_compound(self):
-        pass
+    def inq_compound(self, name):
+        raise NotImplemented('BMI extended function "inq_compound" is not implemented yet')
 
     
-    def inq_compound_field(self):
-        pass
+    def inq_compound_field(self, name):
+        raise NotImplemented('BMI extended function "inq_compound_field" is not implemented yet')
 
     
-    def set_var(self):
-        pass
+    def set_var(self, name, value):
+        '''Set array in model engine'''
+        engine, name = self._split_var(name)
+        self.models[engine]['_wrapper'].set_var(name, value)
 
     
-    def set_var_index(self):
-        pass
+    def set_var_index(self, name, index, value):
+        raise NotImplemented('BMI extended function "set_var_index" is not implemented yet')
 
     
-    def set_var_slice(self):
-        pass
+    def set_var_slice(self, name, start, count, value):
+        raise NotImplemented('BMI extended function "set_var_slice" is not implemented yet')
 
     
     def initialize(self):
@@ -333,7 +348,14 @@ class Windsurf(IBmi):
 
     
     def _get_engine_maxlag(self):
-        '''Get model engine with maximum lag from current time'''
+        '''Get model engine with maximum lag from current time
+
+        Returns
+        -------
+        string
+            name of model engine with larges lag
+
+        '''
 
         lag = np.inf
         engine = None
@@ -344,3 +366,58 @@ class Windsurf(IBmi):
                 engine = name
 
         return engine
+
+
+    def _split_var(self, name):
+        '''Split variable name in engine and variable part
+
+        Split a string into two strings where the first string is the
+        name of the model engine that holds the variable and the
+        second is the variable name itself. If the original string
+        contains a dot (.) the left and right side of the dot are
+        chosen as the engine and variable name respectively. If the
+        original string contains no dot the default engine is chosen
+        for the given variable name. If no default engine is defined
+        for the given variable name a ValueError is raised.
+
+        Parameters
+        ----------
+        name : string
+            name of variable, including engine
+
+        Returns
+        -------
+        string
+            name of model engine
+        string
+            name of variable
+        
+        Examples
+        --------
+        >>> self._split_var('xbeach.zb')
+            ('xbeach', 'zb')
+        >>> self._split_var('zb')
+            ('xbeach', 'zb')
+        >>> self._split_var('aeolis.zb')
+            ('aeolis', 'zb')
+        >>> self._split_var('aeolis.Ct')
+            ('aeolis', 'Ct')
+        >>> self._split_var('Ct')
+            ('aeolis', 'Ct')
+        >>> self._split_var('aeolis.Ct.avg')
+            ('aeolis', 'Ct.avg')
+
+        '''
+        
+        if '.' in name:
+            return re.split('\.', name, maxsplit=1)
+        else:
+            if name in ['Cu', 'Ct', 'supply', 'mass']:
+                engine = 'aeolis'
+            elif name in ['zb', 'zs', 'H']:
+                engine = 'xbeach'
+            else:
+                raise ValueError('Unknown variable "%s", specify engine using "<engine>.%s"' % (name, name))
+            
+            return engine, name
+            
