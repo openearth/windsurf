@@ -17,7 +17,7 @@ Options:
 
 
 import logging
-from model import Windsurf
+from model import WindsurfWrapper
 
 
 def cmd():
@@ -31,12 +31,10 @@ def cmd():
     else:
         logging.root.setLevel(logging.NOTSET)
 
-    with Windsurf(arguments['<config>']) as w:
-        w.initialize()
-        w.update()
-        print w.models
-
-
+    # start model
+    WindsurfWrapper(arguments['<config>']).run()
+    
+        
 if __name__ == '__main__':
     cmd()
     

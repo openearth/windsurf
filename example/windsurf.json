@@ -1,7 +1,7 @@
 {
     "time" : {
         "start" : 0.0,
-        "stop"  : 432000.0
+        "stop"  : 21600.0
     },
     "models" : {
         "xbeach" : {
@@ -13,13 +13,18 @@
             "engine" : "aeolis",
             "engine_path" : "/Users/hoonhout/Github/aeolis/src/.libs/",
             "configfile" : "aeolis.txt"
+        },
+        "aeolis2" : {
+            "engine" : "aeolis2",
+            "engine_path" : "/Users/hoonhout/Github/aeolis/src/.libs/",
+            "configfile" : "aeolis2.txt"
         }
     },
     "exchange" : [
-        {"from" : "xbeach", "to" : "aeolis", "variable" : "zb"},
-        {"from" : "xbeach", "to" : "aeolis", "variable" : "zs"},
-        {"from" : "xbeach", "to" : "aeolis", "variable" : "Hrms"},
-        {"from" : "aeolis", "to" : "xbeach", "variable" : "zb"}
+        {"engine_from" : "xbeach", "engine_to" : "aeolis", "var_from" : "zb", "var_to" : "zb"},
+        {"engine_from" : "xbeach", "engine_to" : "aeolis", "var_from" : "zs", "var_to" : "zs"},
+        {"engine_from" : "xbeach", "engine_to" : "aeolis", "var_from" : "H", "var_to" : "Hs"},
+        {"engine_from" : "aeolis", "engine_to" : "xbeach", "var_from" : "zb", "var_to" : "zb"}
     ],
     "regimes" : {
         "calm" : {
