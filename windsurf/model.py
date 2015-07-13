@@ -7,6 +7,8 @@ import numpy as np
 from bmi.api import IBmi
 from bmi.wrapper import BMIWrapper
 
+import netcdf
+
 
 # initialize log
 logger = logging.getLogger(__name__)
@@ -25,7 +27,7 @@ class WindsurfWrapper:
 
         Parameters
         ----------
-        configfile : string
+        configfile : str
             path to JSON configuration file, see :func:`~windsurf.model.Windsurf._load_configfile`
 
         '''
@@ -38,6 +40,7 @@ class WindsurfWrapper:
 
         self.engine = Windsurf(self.configfile)
         self.engine.initialize()
+        self.output_init()
 
         self.t = 0
         self.i = 0
@@ -54,11 +57,61 @@ class WindsurfWrapper:
             self.tlast = self.t
 
 
-    def output(self):
+    def output_init(self):
+        '''Initialize output'''
+
+        cfg = self.engine.config['netcdf']
+        
+        netcdf.initialize(cfg['outputfile'],
+                          self.read_dimensions(),
+                          variables={v:{'dimensions':self.engine.get_var_rank(v)}
+                                     for v in cfg['outputvars']},
+                          attributes=cfg['attributes'],
+                          crs=cfg['crs']):
+
+        
+    def output_write(self):
         '''Write model data to output'''
         pass
 
-                
+
+    def read_dimensions(self):
+        '''Read dimensions of composite domain
+
+        Returns
+        -------
+        dict
+            dictionary with dimension variables
+
+        '''
+
+        dimensions = {}
+        
+        cfg_xbeach = self.engine.parse_engine_config('xbeach')
+        cfg_aeolis = self.engine.parse_engine_config('aeolis')
+
+        # x and y
+        if len(cfg_xbeach) > 0:
+            dimensions['x'] = cfg_xbeach['nx'] + 1 # FIXME: read x.txt and y.txt
+            dimensions['y'] = cfg_xbeach['ny'] + 1 # FIXME: read x.txt and y.txt
+        elif len(cfg_aeolis) > 0:
+            dimensions['x'] = cfg_aeolis['nx'] + 1 # FIXME: read x.txt and y.txt
+            dimensions['y'] = cfg_aeolis['ny'] + 1 # FIXME: read x.txt and y.txt
+        else:
+            dimensions['x'] = []
+            dimensions['y'] = []
+
+        # layers and fractions
+        if len(cfg_aeolis) > 0:
+            dimensions['layers'] = np.arange(cfg_aeolis['nlayers']) * cfg_aeolis['layer_thickness']
+            dimensions['fractions'] = cfg_aeolis['grain_size']
+        else:
+            dimensions['layers'] = []
+            dimensions['fractions'] = []
+
+        return dimensions
+        
+        
     def progress(self, frac=.1):
         '''Log progress
 
@@ -104,7 +157,7 @@ class Windsurf(IBmi):
 
         Parameters
         ----------
-        configfile : string
+        configfile : str
             path to JSON configuration file, see :func:`~windsurf.model.Windsurf._load_configfile`
 
         '''
@@ -328,7 +381,7 @@ class Windsurf(IBmi):
 
         Parameters
         ----------
-        engine : string
+        engine : str
             model engine to write data to
 
         '''
@@ -352,7 +405,7 @@ class Windsurf(IBmi):
 
         Returns
         -------
-        string
+        str
             name of model engine with larges lag
 
         '''
@@ -382,14 +435,14 @@ class Windsurf(IBmi):
 
         Parameters
         ----------
-        name : string
+        name : str
             name of variable, including engine
 
         Returns
         -------
-        string
+        str
             name of model engine
-        string
+        str
             name of variable
         
         Examples
@@ -421,3 +474,57 @@ class Windsurf(IBmi):
             
             return engine, name
             
+
+    def parse_engine_config(self, engine):
+        '''Parse configuration file of single model engine
+
+        Parameters
+        ----------
+        engine : str
+            name of model engine
+
+        Returns
+        -------
+        dict
+            key/value pairs of model engine configuration
+
+        '''
+
+        config = {}
+        if self.models.has_key(engine):
+            with open(self.models[engine]['configfile'], 'r') as fp:
+                for line in fp:
+                    if '=' in line:
+                        key, value = re.split('\s*=\s*', line, maxsplit=1)
+                        config[key.strip()] = self.parse_config_value(value)
+
+        return config
+
+
+    @abstractmethod
+    def parse_config_value(value):
+        '''Parse configuration value string to valid Python variable type
+
+        Parameters
+        ----------
+        value : str
+            configuration value string
+
+        Returns
+        -------
+        str, int, float, bool or list
+            parsed configuration value
+
+        '''
+
+        value = value.strip()
+        if re.match('[FT]$', value):
+            return value == 'T'
+        if re.match('[\-0-9]+$', value):
+            return int(value)
+        elif re.match('[\-0-9\.]+$', value):
+            return float(value)
+        elif re.search('\s', value):
+            return [self.parse_config_value(x) for x in re.split('\s+', value)]
+        else:
+            return value
