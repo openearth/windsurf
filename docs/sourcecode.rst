@@ -17,6 +17,14 @@ netcdf
    :private-members:
    :special-members:
 
+parsers
+-------
+
+.. automodule:: windsurf.parsers
+   :members:
+   :private-members:
+   :special-members:
+
 cmd
 ---
 
