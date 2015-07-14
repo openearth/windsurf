@@ -18,24 +18,25 @@ def initialize(ncfile, dimensions, variables=None, attributes=None, crs=None):
 
        {
            "Ct" : {
-               "dimensions" : [1, 121, 11]
+               "dimensions" : ["y", "x", "fractions"]
            },
            "mass" : {
-               "dimensions" : [1, 121, 11, 10]
+               "dimensions" : ["y", "x", "fractions", "layers"]
            },
            "zb" : {
-               "dimensions" : [1, 121]
+               "dimensions" : ["y", "x"]
            }
         }
 
     Parameters
     ----------
-    ncfile : string
+    ncfile : str
         path to netCDF4 file
     dimensions : dict
         dict with dimension variables x, y, layers and fractions
     variables : dict
-        dict of dicts with other variables, where each variable defines at least its dimensions
+        dict of dicts with other variables, where each variable
+        defines at least its dimensions
     attributes : dict
         dict with global netCDF attributes
     crs : dict
@@ -106,7 +107,7 @@ def initialize(ncfile, dimensions, variables=None, attributes=None, crs=None):
         nc.metadata_link = '0'
         
         ## add variables
-        nc.createVariable('x', 'float32', (u'x',))
+        nc.createVariable('x', 'float32', (u'x'))
         nc.variables['x'].long_name = 'x-coordinate'
         nc.variables['x'].standard_name = 'projection_x_coordinate'
         nc.variables['x'].units = 'm'
@@ -117,7 +118,7 @@ def initialize(ncfile, dimensions, variables=None, attributes=None, crs=None):
         nc.variables['x'].grid_mapping = 'crs'
         nc.variables['x'].comment = ''
         
-        nc.createVariable('y', 'float32', (u'y',))
+        nc.createVariable('y', 'float32', (u'y'))
         nc.variables['y'].long_name = 'y-coordinate'
         nc.variables['y'].standard_name = 'projection_y_coordinate'
         nc.variables['y'].units = 'm'
@@ -197,7 +198,7 @@ def initialize(ncfile, dimensions, variables=None, attributes=None, crs=None):
         if variables is not None:
             for var, props in variables.iteritems():
 
-                nc.createVariable(var, 'float32', ['time'] + props['dimensions']) # FIXME
+                nc.createVariable(var, 'float32', props['dimensions'])
                 nc.variables[var].long_name = var
                 nc.variables[var].standard_name = ''
                 nc.variables[var].units = ''
@@ -230,8 +231,8 @@ def initialize(ncfile, dimensions, variables=None, attributes=None, crs=None):
         nc.variables['layers'][:] = dimensions['layers']
         nc.variables['fractions'][:] = dimensions['fractions']
 
-        nc.variables['lat'][:] = 0.
-        nc.variables['lon'][:] = 0.
+        nc.variables['lat'][:,:] = 0.
+        nc.variables['lon'][:,:] = 0.
         nc.variables['x_bounds'][:,:] = 0.
         nc.variables['y_bounds'][:,:] = 0.
         nc.variables['lat_bounds'][:,:] = 0.
@@ -246,6 +247,46 @@ def initialize(ncfile, dimensions, variables=None, attributes=None, crs=None):
 #                grp.setncattr(k, v)
 
 
+def append(ncfile, idx, variables):
+    '''Append data to existing netCDF4 file
+
+    Parameters
+    ----------
+    ncfile : str
+        path to netCDF4 file
+    idx : int
+        time index to write to
+    variables : dict
+        dict with variable names (keys) and data to be
+        appended (values)
+
+    '''
+
+    with netCDF4.Dataset(ncfile, 'a') as nc:
+        nc.variables['time'][idx] = variables['time']
+        for name, value in variables.iteritems():
+            nc.variables[name][idx,...] = value
+#            if 'sum' in self.outputtypes:
+#                nc.variables['%s.sum' % var][idx,...] \
+#                    = model.get_var('%s.sum' % var).copy()
+#            if 'avg' in self.outputtypes:
+#                nc.variables['%s.avg' % var][idx,...] \
+#                    = model.get_var('%s.avg' % var).copy()
+#            if 'var' in self.outputtypes:
+#                nc.variables['%s.var' % var][idx,...] \
+#                    = model.get_var('%s.var' % var).copy()
+#            if 'min' in self.outputtypes:
+#                nc.variables['%s.min' % var][idx,...] \
+#                    = model.get_var('%s.min' % var).copy()
+#            if 'max' in self.outputtypes:
+#                nc.variables['%s.max' % var][idx,...] \
+#                    = model.get_var('%s.max' % var).copy()
+
+        nc.variables['time_bounds'][idx,0] \
+            = 0 if idx == 0 else nc.variables['time'][idx]
+        nc.variables['time_bounds'][idx,1] = variables['time']
+    
+
 def set_ncattr(nc, key, value):
     '''Set netCDF4 attribute safe for boolean values
 
@@ -253,7 +294,7 @@ def set_ncattr(nc, key, value):
     ----------
     nc : netCDF4.Dataset or netCDF4.Variable
         netCDF4 object to set attribute on
-    key : string
+    key : str
         attribute name
     value : any
         attribute value

@@ -7,7 +7,7 @@ import numpy as np
 from bmi.api import IBmi
 from bmi.wrapper import BMIWrapper
 
-import netcdf
+import netcdf, parsers
 
 
 # initialize log
@@ -28,7 +28,8 @@ class WindsurfWrapper:
         Parameters
         ----------
         configfile : str
-            path to JSON configuration file, see :func:`~windsurf.model.Windsurf._load_configfile`
+            path to JSON configuration file, see
+            :func:`~windsurf.model.Windsurf._load_configfile`
 
         '''
 
@@ -40,10 +41,11 @@ class WindsurfWrapper:
 
         self.engine = Windsurf(self.configfile)
         self.engine.initialize()
-        #self.output_init() # FIXME
+        self.output_init()
 
         self.t = 0
         self.i = 0
+        self.iout = 0
         self.tlog = 0.0 # in real-world time
         self.tlast = 0.0 # in simulation time
         self.tstart = time.time() # in real-world time
@@ -53,30 +55,64 @@ class WindsurfWrapper:
             self.engine.update()
             self.t = self.engine.get_current_time()
             self.i += 1
+            self.output()
             self.progress()
             self.tlast = self.t
 
 
     def output_init(self):
-        '''Initialize output'''
+        '''Initialize netCDF4 output file
 
+        Creates an empty netCDF4 output file with the necessary
+        dimensions, variables, attributes and coordinate reference
+        system specification (crs).
+
+        '''
+
+        logger.debug('Initializing output...')
+        
         cfg = self.engine.config['netcdf']
+
+        # get dimension names for each variable
+        variables = {
+            v : { 'dimensions' : self.engine.get_dimensions(v) }
+            for v in cfg['outputvars']
+        }
         
         netcdf.initialize(cfg['outputfile'],
                           self.read_dimensions(),
-                          variables={v:{'dimensions':self.engine.get_var_rank(v)}
-                                     for v in cfg['outputvars']},
+                          variables=variables,
                           attributes=cfg['attributes'],
                           crs=cfg['crs'])
 
         
-    def output_write(self):
-        '''Write model data to output'''
-        pass
+    def output(self):
+        '''Write model data to netCDF4 output file'''
+
+        if np.mod(self.t, self.engine.tout) < self.t - self.tlast:
+
+            logger.debug('Writing output at t=%0.2f...' % self.t)
+            
+            cfg = self.engine.config['netcdf']
+            
+            # get dimension data for each variable
+            variables = {v : self.engine.get_var(v) for v in cfg['outputvars']}
+            variables['time'] = self.t
+        
+            netcdf.append(cfg['outputfile'],
+                          idx=self.iout,
+                          variables=variables)
+
+            self.iout += 1
 
 
     def read_dimensions(self):
         '''Read dimensions of composite domain
+
+        Parses individual model engine configuration files and read
+        information regarding the dimensions of the composite domain,
+        like the bathymetric grid, number of sediment fractions and
+        number of bed layers.
 
         Returns
         -------
@@ -86,29 +122,54 @@ class WindsurfWrapper:
         '''
 
         dimensions = {}
-        
-        cfg_xbeach = self.engine.parse_engine_config('xbeach')
-        cfg_aeolis = self.engine.parse_engine_config('aeolis')
+
+        if self.engine.models.has_key('xbeach'):
+            cfg_xbeach = parsers.XBeachParser(
+                self.engine.models['xbeach']['configfile']).parse()
+        else:
+            cfg_xbeach = {}
+
+        if self.engine.models.has_key('aeolis'):
+            cfg_aeolis = parsers.AeolisParser(
+                self.engine.models['aeolis']['configfile']).parse()
+        else:
+            cfg_aeolis = {}
 
         # x and y
         if len(cfg_xbeach) > 0:
-            dimensions['x'] = np.arange(cfg_xbeach['nx'] + 1) # FIXME: read x.txt and y.txt
-            dimensions['y'] = np.arange(cfg_xbeach['ny'] + 1) # FIXME: read x.txt and y.txt
+            dimensions['x'] = cfg_xbeach['xfile'].reshape(
+                (cfg_xbeach['ny']+1,
+                 cfg_xbeach['nx']+1))[0,:]
+            dimensions['y'] = cfg_xbeach['yfile'].reshape(
+                (cfg_xbeach['ny']+1,
+                 cfg_xbeach['nx']+1))[:,0]
         elif len(cfg_aeolis) > 0:
-            dimensions['x'] = np.arange(cfg_aeolis['nx'] + 1) # FIXME: read x.txt and y.txt
-            dimensions['y'] = np.arange(cfg_aeolis['ny'] + 1) # FIXME: read x.txt and y.txt
+            dimensions['x'] = cfg_aeolis['xgrid_file'].reshape(
+                (cfg_aeolis['ny']+1,
+                 cfg_aeolis['nx']+1))[0,:]
+            dimensions['y'] = cfg_aeolis['ygrid_file'].reshape(
+                (cfg_aeolis['ny']+1,
+                 cfg_aeolis['nx']+1))[:,0]
         else:
             dimensions['x'] = []
             dimensions['y'] = []
 
         # layers and fractions
         if len(cfg_aeolis) > 0:
-            dimensions['layers'] = np.arange(cfg_aeolis['nlayers']) * cfg_aeolis['layer_thickness']
-            dimensions['fractions'] = [cfg_aeolis['grain_size']]
+            dimensions['layers'] = np.arange(cfg_aeolis['nlayers']) * \
+                                   cfg_aeolis['layer_thickness']
+            dimensions['fractions'] = cfg_aeolis['grain_size']
         else:
             dimensions['layers'] = []
             dimensions['fractions'] = []
 
+        # ensure lists
+        for k, v in dimensions.iteritems():
+            try:
+                len(v)
+            except:
+                dimensions[k] = [v]
+            
         return dimensions
         
         
@@ -158,7 +219,8 @@ class Windsurf(IBmi):
         Parameters
         ----------
         configfile : str
-            path to JSON configuration file, see :func:`~windsurf.model.Windsurf._load_configfile`
+            path to JSON configuration file, see 
+            :func:`~windsurf.model.Windsurf._load_configfile`
 
         '''
         
@@ -207,6 +269,7 @@ class Windsurf(IBmi):
                 self.config = json.load(fp)
                 self.tstart = self.config['time']['start']
                 self.tstop = self.config['time']['stop']
+                self.tout = self.config['time']['out']
                 self.models = self.config['models']
         else:
             raise IOError('File not found: %s' % self.configfile)
@@ -230,15 +293,17 @@ class Windsurf(IBmi):
     def get_var(self, name):
         '''Return array from model engine'''
         engine, name = self._split_var(name)
-        return self.models[engine]['_wrapper'].get_var(name)
+        return self.models[engine]['_wrapper'].get_var(name).copy()
 
     
     def get_var_count(self):
-        raise NotImplemented('BMI extended function "get_var_count" is not implemented yet')
+        raise NotImplemented(
+            'BMI extended function "get_var_count" is not implemented yet')
 
     
     def get_var_name(self, i):
-        raise NotImplemented('BMI extended function "get_var_name" is not implemented yet')
+        raise NotImplemented(
+            'BMI extended function "get_var_name" is not implemented yet')
 
     
     def get_var_rank(self, name):
@@ -260,11 +325,13 @@ class Windsurf(IBmi):
 
     
     def inq_compound(self, name):
-        raise NotImplemented('BMI extended function "inq_compound" is not implemented yet')
+        raise NotImplemented(
+            'BMI extended function "inq_compound" is not implemented yet')
 
     
     def inq_compound_field(self, name):
-        raise NotImplemented('BMI extended function "inq_compound_field" is not implemented yet')
+        raise NotImplemented(
+            'BMI extended function "inq_compound_field" is not implemented yet')
 
     
     def set_var(self, name, value):
@@ -274,11 +341,13 @@ class Windsurf(IBmi):
 
     
     def set_var_index(self, name, index, value):
-        raise NotImplemented('BMI extended function "set_var_index" is not implemented yet')
+        raise NotImplemented(
+            'BMI extended function "set_var_index" is not implemented yet')
 
     
     def set_var_slice(self, name, start, count, value):
-        raise NotImplemented('BMI extended function "set_var_slice" is not implemented yet')
+        raise NotImplemented(
+            'BMI extended function "set_var_slice" is not implemented yet')
 
     
     def initialize(self):
@@ -339,25 +408,30 @@ class Windsurf(IBmi):
 
             # determine model engine with maximum lag
             engine = self._get_engine_maxlag()
-            now = self.models[engine]['_time']
+            e = self.models[engine]
+            now = e['_time']
 
             # exchange data if another model engine is selected
             if engine != engine_last:
                 self._exchange_data(engine)
 
             # step model engine in future
-            self.models[engine]['_wrapper'].update(dt)
+            e['_wrapper'].update(dt)
 
             # update time
-            self.models[engine]['_time'] = self.models[engine]['_wrapper'].get_current_time()
-            self.models[engine]['_target'] = self.models[engine]['_time']
+            e['_time'] = e['_wrapper'].get_current_time()
+            e['_target'] = e['_time']
 
-            logger.debug('Step engine "%s" from t=%0.2f to t=%0.2f into the future...' % (engine,
-                                                                                          now,
-                                                                                          self.models[engine]['_time']))
+            logger.debug(
+                'Step engine "%s" from t=%0.2f to t=%0.2f into the future...' % (
+                    engine,
+                    now,
+                    e['_time']))
 
             # determine target time step after first update
-            if target_time is None and np.all([m['_target'] is not None for m in self.models.itervalues()]):
+            if target_time is None and \
+               np.all([m['_target'] is not None for m in self.models.itervalues()]):
+                
                 target_time = np.max([m['_time'] for m in self.models.itervalues()])
                 logger.debug('Set target time step to t=%0.2f' % target_time)
 
@@ -389,10 +463,11 @@ class Windsurf(IBmi):
         for exchange in self.config['exchange']:
             if exchange['engine_to'] == engine:
                 
-                logger.debug('Exchange "%s" from "%s" to "%s" as "%s"' % (exchange['var_from'],
-                                                                          exchange['engine_from'],
-                                                                          exchange['engine_to'],
-                                                                          exchange['var_to']))
+                logger.debug('Exchange "%s" from "%s" to "%s" as "%s"' % (
+                    exchange['var_from'],
+                    exchange['engine_from'],
+                    exchange['engine_to'],
+                    exchange['var_to']))
                 
                 val = self.models[exchange['engine_from']]['_wrapper'].get_var(
                     exchange['var_from'])
@@ -465,66 +540,35 @@ class Windsurf(IBmi):
         if '.' in name:
             return re.split('\.', name, maxsplit=1)
         else:
-            if name in ['Cu', 'Ct', 'supply', 'mass']:
+            if name in ['Cu', 'Ct', 'supply', 'mass', 'uth',
+                        'uw', 'uws', 'uwn', 'udir']:
                 engine = 'aeolis'
-            elif name in ['zb', 'zs', 'H']:
+            elif name in ['zb', 'zs', 'zs0', 'H']:
                 engine = 'xbeach'
             else:
-                raise ValueError('Unknown variable "%s", specify engine using "<engine>.%s"' % (name, name))
+                raise ValueError(
+                    'Unknown variable "%s", specify engine using "<engine>.%s"' % (
+                        name, name))
             
             return engine, name
-            
 
-    def parse_engine_config(self, engine):
-        '''Parse configuration file of single model engine
+        
+    @staticmethod
+    def get_dimensions(var):
 
-        Parameters
-        ----------
-        engine : str
-            name of model engine
-
-        Returns
-        -------
-        dict
-            key/value pairs of model engine configuration
-
-        '''
-
-        config = {}
-        if self.models.has_key(engine):
-            with open(self.models[engine]['configfile'], 'r') as fp:
-                for line in fp:
-                    if '=' in line:
-                        key, value = re.split('\s*=\s*', line, maxsplit=1)
-                        config[key.strip()] = self.parse_config_value(value)
-
-        return config
-
-
-#    @abstractmethod
-    def parse_config_value(self, value): # FIXME: should be abstract
-        '''Parse configuration value string to valid Python variable type
-
-        Parameters
-        ----------
-        value : str
-            configuration value string
-
-        Returns
-        -------
-        str, int, float, bool or list
-            parsed configuration value
-
-        '''
-
-        value = value.strip()
-        if re.match('[FT]$', value):
-            return value == 'T'
-        if re.match('[\-0-9]+$', value):
-            return int(value)
-        elif re.match('[\-0-9\.]+$', value):
-            return float(value)
-        elif re.search('\s', value):
-            return [self.parse_config_value(x) for x in re.split('\s+', value)]
+        var = var.split('.')[0]
+        
+        if var in ['mass']:
+            dims = (u'time', u'y', u'x', u'layers', u'fractions')
+        elif var in ['d10', 'd50', 'd90', 'moist', 'thlyr']:
+            dims = (u'time', u'y', u'x', u'layers')
+        elif var in ['Cu', 'Ct', 'uth', 'supply', 'p']:
+            dims = (u'time', u'y', u'x', u'fractions')
+        elif var in ['x', 'z', 'zb', 'zs', 'uw', 'udir', 'H']:
+            dims = (u'time', u'y', u'x')
+        elif var in []:
+            dims = (u'time',)
         else:
-            return value
+            dims = None
+            
+        return dims
