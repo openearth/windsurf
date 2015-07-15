@@ -10,9 +10,6 @@ Options:
     -h, --help         show this help message and exit
     --verbose=LEVEL    print logging messages [default: 30]
 
-Options:
-    -h, --help         show this help message and exit
-
 '''
 
 

@@ -4,7 +4,13 @@ import numpy as np
 
 
 class ConfigParser:
+    '''Configuration parser base class
 
+    Base class for the construction of model engine configuration file
+    parsers. Parses the main configuration file and referenced files
+    therin.
+
+    '''
     
     def __init__(self, configfile):
         '''Initialize the class
@@ -132,10 +138,20 @@ class ConfigParser:
 
 
 class XBeachParser(ConfigParser):
+    '''Configuration parser class for XBeach models
+
+    Inherits from :class:`ConfigParser`.
+
+    '''
     
     pass
 
 
 class AeolisParser(ConfigParser):
+    '''Configuration parser class for AeoLiS models
+
+    Inherits from :class:`ConfigParser`.
+
+    '''
     
     pass

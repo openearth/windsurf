@@ -1,6 +1,11 @@
 Source code documentation
 =========================
 
+The windsurf Python package connects the model cores within the
+Windsurf composite model and acts as user-interface to the
+end-user. The package consists of different modules that are
+documented in the following sections.
+
 model
 -----
 
@@ -32,3 +37,4 @@ cmd
    :members:
    :private-members:
    :special-members:
+

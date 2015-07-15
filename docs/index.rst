@@ -6,14 +6,15 @@
 Welcome to windsurf's documentation!
 ====================================
 
-Contents:
----------
+Contents
+--------
 
 .. toctree::
    :maxdepth: 2
 
    windsurf
    sourcecode
+   tutorials
 
 Command-line tools
 ------------------
@@ -27,6 +28,51 @@ windsurf
 .. automodule:: windsurf.cmd
                 :members:
 
+
+Source code repository
+----------------------
+
+The Windsurf source code can be downloaded from the OpenEarth GitHub
+repository: `<https://github.com/openearth/windsurf/>`_.
+
+Acknowledgements
+----------------
+
+The Windsurf model is an initiated by:
+
+* `Oregon State University <http://oregonstate.edu>`_
+  
+  * Peter Ruggiero
+  * Nick Cohn
+    
+* `University of North Carolina <http://www.northcarolina.edu>`_
+  
+  * Laura Moore
+  * Evan Goldstein
+    
+* `Delft University of Technology <http://www.tudelft.nl>`_
+  
+  * Bas Hoonhout
+  * Sierd de Vries
+    
+* `Bremen University <http://www.uni-bremen.de/>`_
+  
+  * Orencio Durán
+    
+* `UNESCO-IHE <http://www.unesco-ihe.org/>`_
+  
+  * Dano Roelvink
+
+The Python package is developed and currently maintained by `Bas
+Hoonhout <mailto:b.m.hoonhout@tudelft.nl>`_.
+
+Bas Hoonhout and Sierd de Vries are supported by the ERC-Advanced
+Grant 291206 Nearshore Monitoring and Modeling (`NEMO
+<http://nemo.citg.tudelft.nl>`_) and `Deltares
+<http://www.deltares.nl>`_ for their work on the Windsurf model.
+
+Peter Ruggiero, Nick Cohn, Laura Moore and Evan Goldstein are
+supported by ... for their work on the Windsurf model.
 
 Indices and tables
 ==================
