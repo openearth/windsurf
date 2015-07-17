@@ -7,7 +7,7 @@
     "models" : {
         "xbeach" : {
             "engine" : "xbeach",
-            "engine_path" : "/Users/hoonhout/Checkouts/XBeach/branches/xbeach_bmi/src/xbeachlibrary/.libs/",
+            "engine_path" : "/Users/hoonhout/Checkouts/XBeach/branches/fedor-template/src/xbeachlibrary/.libs/",
             "configfile" : "params.txt"
         },
         "aeolis" : {
@@ -69,17 +69,17 @@
             },
             "aeolis" : {
                 "scheme" : "euler_forward",
-                "dt" : -1.0,
+                "dt" : 60.0,
                 "accfac" : 1.0
             }
         }
     },
     "scenario" : [
-        {"duration" : 86400, "regime" : "calm"},
-        {"duration" : 86400, "regime" : "windy"},
-        {"duration" : 86400, "regime" : "storm"},
-        {"duration" : 86400, "regime" : "windy"},
-        {"duration" : 86400, "regime" : "calm"}
+        {"duration" : 3600, "regime" : "calm"},
+        {"duration" : 3600, "regime" : "windy"},
+        {"duration" : 3600, "regime" : "storm"},
+        {"duration" : 3600, "regime" : "windy"},
+        {"duration" : 3600, "regime" : "calm"}
     ],
     "netcdf" : {
         "outputfile" : "windsurf.nc",

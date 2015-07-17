@@ -22,6 +22,10 @@ class WindsurfWrapper:
 
     '''
 
+    
+    regime = None
+    
+
     def __init__(self, configfile=None):
         '''Initialize the class
 
@@ -52,6 +56,7 @@ class WindsurfWrapper:
         self.tstop = self.engine.get_end_time() # in simulation time
         
         while self.t < self.tstop:
+            self.set_regime()
             self.engine.update()
             self.t = self.engine.get_current_time()
             self.i += 1
@@ -60,6 +65,35 @@ class WindsurfWrapper:
             self.tlast = self.t
 
 
+    def set_regime(self):
+        '''Set model settings according to current regime
+
+        Checks which regime should be currently active. If the regime
+        is changed, the corresponding model parameters are set.
+
+        '''
+
+        regimes = self.engine.config['regimes']
+        scenario = self.engine.config['scenario']
+        times = np.cumsum([0]+[s["duration"] for s in scenario])
+        idx = np.where(times <= self.t)[0].max()
+
+        if idx >= len(scenario):
+            logger.warning("Scenario too short, reusing last regime!")
+            idx = len(scenario)-1
+
+        if scenario[idx]["regime"] != self.regime:
+            self.regime = scenario[idx]["regime"]
+            logger.info('Switched to regime "%s"' % self.regime)
+
+            for engine, variables in regimes[self.regime].iteritems():
+                for name, value in variables.iteritems():
+                    logger.debug('Set parameter "%s" in engine "%s" to "%s"' % (name,
+                                                                                engine,
+                                                                                value))
+                    self.engine.set_var('%s.%s' % (engine, name), np.asarray(value))
+
+        
     def output_init(self):
         '''Initialize netCDF4 output file
 
