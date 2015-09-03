@@ -108,8 +108,7 @@ class ConfigParser:
             pass
             
 
-    @staticmethod
-    def parse_config_value(value, force_list=False):
+    def parse_config_value(self, value, force_list=False):
         '''Parse configuration value string to valid Python variable type
 
         Parameters

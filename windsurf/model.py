@@ -3,6 +3,7 @@ import re
 import time
 import json
 import logging
+import importlib
 import numpy as np
 from bmi.api import IBmi
 from bmi.wrapper import BMIWrapper
@@ -33,7 +34,7 @@ class WindsurfWrapper:
         ----------
         configfile : str
             path to JSON configuration file, see
-            :func:`~windsurf.model.Windsurf._load_configfile`
+            :func:`~windsurf.model.Windsurf.load_configfile`
 
         '''
 
@@ -55,6 +56,7 @@ class WindsurfWrapper:
         self.tstart = time.time() # in real-world time
         self.tstop = self.engine.get_end_time() # in simulation time
         
+        self.output()
         while self.t < self.tstop:
             self.set_regime()
             self.engine.update()
@@ -63,6 +65,10 @@ class WindsurfWrapper:
             self.output()
             self.progress()
             self.tlast = self.t
+
+        self.engine.finalize()
+        
+        logger.debug('End of simulation')
 
 
     def set_regime(self):
@@ -75,15 +81,15 @@ class WindsurfWrapper:
 
         regimes = self.engine.config['regimes']
         scenario = self.engine.config['scenario']
-        times = np.cumsum([0]+[s["duration"] for s in scenario])
+        times = np.asarray([s[0] for s in scenario])
         idx = np.where(times <= self.t)[0].max()
-
+            
         if idx >= len(scenario):
             logger.warning("Scenario too short, reusing last regime!")
             idx = len(scenario)-1
-
-        if scenario[idx]["regime"] != self.regime:
-            self.regime = scenario[idx]["regime"]
+            
+        if scenario[idx][1] != self.regime:
+            self.regime = scenario[idx][1]
             logger.info('Switched to regime "%s"' % self.regime)
 
             for engine, variables in regimes[self.regime].iteritems():
@@ -112,6 +118,9 @@ class WindsurfWrapper:
             v : { 'dimensions' : self.engine.get_dimensions(v) }
             for v in cfg['outputvars']
         }
+
+        for v in variables.iterkeys():
+            logger.info('Creating netCDF output for "%s"' % v)
         
         netcdf.initialize(cfg['outputfile'],
                           self.read_dimensions(),
@@ -190,8 +199,8 @@ class WindsurfWrapper:
 
         # layers and fractions
         if len(cfg_aeolis) > 0:
-            dimensions['layers'] = np.arange(cfg_aeolis['nlayers']) * \
-                                   cfg_aeolis['layer_thickness']
+            dimensions['layers'] = np.arange(cfg_aeolis['nlayers']+3) * \
+                                   cfg_aeolis['layer_thickness'] # +3 because of dummy layers in AeoLiS
             dimensions['fractions'] = cfg_aeolis['grain_size']
         else:
             dimensions['layers'] = []
@@ -228,17 +237,16 @@ class WindsurfWrapper:
             fmt = '[%5.1f%%] %s / %s / %s (avg. dt=%5.3f)'
 
             if p <= 1:
-                logging.info(fmt % (p*100.,
-                                    time.strftime('%H:%M:%S', time.gmtime(dt1)),
-                                    time.strftime('%H:%M:%S', time.gmtime(dt2)),
-                                    time.strftime('%H:%M:%S', time.gmtime(dt3)),
-                                    self.t / self.i))
+                logger.info(fmt % (p*100.,
+                                   time.strftime('%H:%M:%S', time.gmtime(dt1)),
+                                   time.strftime('%H:%M:%S', time.gmtime(dt2)),
+                                   time.strftime('%H:%M:%S', time.gmtime(dt3)),
+                                   self.t / self.i))
                         
                 self.tlog = time.time()
 
 
 class Windsurf(IBmi):
-
     '''Windsurf BMI class
 
     BMI compatible class for calling the Windsurf composite model.
@@ -254,16 +262,18 @@ class Windsurf(IBmi):
         ----------
         configfile : str
             path to JSON configuration file, see 
-            :func:`~windsurf.model.Windsurf._load_configfile`
+            :func:`~windsurf.model.Windsurf.load_configfile`
 
         '''
         
         self.configfile = configfile
-        self._load_configfile()
+        self.load_configfile()
 
 
     def __enter__(self):
         '''Enter the class'''
+        
+        self.initialize()
         return self
         
         
@@ -286,7 +296,7 @@ class Windsurf(IBmi):
             raise errobj
 
 
-    def _load_configfile(self):
+    def load_configfile(self):
         '''Load configuration file
 
         A JSON configuration file may contain the following:
@@ -299,7 +309,18 @@ class Windsurf(IBmi):
         '''
 
         if os.path.exists(self.configfile):
-            with open(self.configfile, 'r') as fp:
+
+            # store current working directory
+            self.cwd = os.getcwd()
+
+            # change working directry to location of configuration file
+            if not os.path.isabs(self.configfile):
+                self.configfile = os.path.abspath(self.configfile)
+            fpath, fname = os.path.split(self.configfile)
+            os.chdir(fpath)
+            logger.debug('Changed directory to "%s"' % fpath)
+
+            with open(fname, 'r') as fp:
                 self.config = json.load(fp)
                 self.tstart = self.config['time']['start']
                 self.tstop = self.config['time']['stop']
@@ -393,7 +414,8 @@ class Windsurf(IBmi):
             logger.info('Loading library "%s"...' % name)
 
             # support local engines
-            if props['engine_path'] and \
+            if props.has_key('engine_path') and \
+               props['engine_path'] and \
                os.path.isabs(props['engine_path']) and \
                os.path.exists(props['engine_path']):
                 
@@ -402,10 +424,18 @@ class Windsurf(IBmi):
                 os.environ['DYLD_LIBRARY_PATH'] = props['engine_path'] # Darwin
 
             # initialize bmi wrapper
-            self.models[name]['_wrapper'] = BMIWrapper(
-                engine=props['engine'],
-                configfile=props['configfile'] or ''
-            )
+            try:
+                # try external library
+                self.models[name]['_wrapper'] = BMIWrapper(
+                    engine=props['engine'],
+                    configfile=props['configfile'] or ''
+                )
+            except RuntimeError:
+                # try python package
+                p, c = props['engine'].rsplit('.', 1)
+                mod = importlib.import_module(p)
+                engine = getattr(mod, c)
+                self.models[name]['_wrapper'] = engine(configfile=props['configfile'] or '')
 
             # initialize time
             self.models[name]['_time'] = self.t
@@ -476,16 +506,20 @@ class Windsurf(IBmi):
         
     
     def finalize(self):
-        pass
+        '''Finalize model engines'''
+
+        # finalize model engines
+        for name, props in self.models.iteritems():
+            self.models[name]['_wrapper'].finalize()
 
 
     def _exchange_data(self, engine):
         '''Exchange data from all model engines to a given model engine
 
         Reads exchange configuration and looks for items where the
-        given model engine is in the "engine_to" field and reads the
+        given model engine is in the "var_to" field and reads the
         corresponding "var_from" variable from the model engine
-        specified by "engine_from" as "var_to" variable.
+        specified by the "var_to" variable.
 
         Parameters
         ----------
@@ -495,18 +529,16 @@ class Windsurf(IBmi):
         '''
 
         for exchange in self.config['exchange']:
-            if exchange['engine_to'] == engine:
+            engine_to, var_to = self._split_var(exchange['var_to'])
+            engine_from, var_from = self._split_var(exchange['var_from'])
+            if engine_to == engine:
                 
-                logger.debug('Exchange "%s" from "%s" to "%s" as "%s"' % (
+                logger.debug('Exchange "%s" to "%s"' % (
                     exchange['var_from'],
-                    exchange['engine_from'],
-                    exchange['engine_to'],
                     exchange['var_to']))
-                
-                val = self.models[exchange['engine_from']]['_wrapper'].get_var(
-                    exchange['var_from'])
-                self.models[exchange['engine_to']]['_wrapper'].set_var(
-                    exchange['var_to'], val)
+
+                val = self.models[engine_from]['_wrapper'].get_var(var_from)
+                self.models[engine_to]['_wrapper'].set_var(var_to, val)
 
     
     def _get_engine_maxlag(self):
@@ -570,21 +602,35 @@ class Windsurf(IBmi):
             ('aeolis', 'Ct.avg')
 
         '''
+
+        parts = name.split('.')
+
+        engine = None
+        name = None
         
-        if '.' in name:
-            return re.split('\.', name, maxsplit=1)
+        if len(parts) == 1:
+            name = parts[0]
+        elif len(parts) == 2:
+            if parts[0] in self.models.keys():
+                engine, name = parts
+            else:
+                name = '.'.join(parts)
         else:
-            if name in ['Cu', 'Ct', 'supply', 'mass', 'uth',
-                        'uw', 'uws', 'uwn', 'udir']:
+            engine = parts[0]
+            name = '.'.join(parts)
+
+        if engine is None:
+            if name.split('.')[0] in ['Cu', 'Ct', 'supply', 'mass', 'uth',
+                                      'uw', 'uws', 'uwn', 'udir']:
                 engine = 'aeolis'
-            elif name in ['zb', 'zs', 'zs0', 'H']:
+            elif name.split('.')[0] in ['zb', 'zs', 'zs0', 'H']:
                 engine = 'xbeach'
             else:
                 raise ValueError(
                     'Unknown variable "%s", specify engine using "<engine>.%s"' % (
                         name, name))
             
-            return engine, name
+        return engine, name
 
         
     @staticmethod
