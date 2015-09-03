@@ -3,4 +3,5 @@
 *.log
 *.dat
 *.bcf
+*.nc
 XB*.txt

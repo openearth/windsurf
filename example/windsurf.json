@@ -1,14 +1,14 @@
 {
     "time" : {
         "start" : 0.0,
-        "stop"  : 21600.0,
+        "stop"  : 31536000.0,
         "out"   : 3600.0
     },
     "models" : {
         "xbeach" : {
-            "engine" : "xbeach",
-            "engine_path" : "/Users/hoonhout/Checkouts/XBeach/branches/fedor-template/src/xbeachlibrary/.libs/",
-            "configfile" : "params.txt"
+            "engine" : "xbeachmi.model.XBeachMI",
+            "engine_path" : "/Users/hoonhout/Checkouts/XBeach/trunk/src/xbeachlibrary/.libs/",
+            "configfile" : "xbeachmi.json"
         },
         "aeolis" : {
             "engine" : "aeolis",
@@ -18,72 +18,91 @@
     },
     "exchange" : [
         {
-            "engine_from" : "xbeach",
-            "engine_to" : "aeolis",
-            "var_from" : "zb",
-            "var_to" : "zb"
+            "var_from" : "xbeach.zb",
+            "var_to" : "aeolis.zbx"
         },{
-            "engine_from" : "xbeach",
-            "engine_to" : "aeolis",
-            "var_from" : "zs",
-            "var_to" : "zs"
+            "var_from" : "xbeach.zs",
+            "var_to" : "aeolis.zs"
         },{
-            "engine_from" : "xbeach",
-            "engine_to" : "aeolis",
-            "var_from" : "H",
-            "var_to" : "Hs"
+            "var_from" : "xbeach.H",
+            "var_to" : "aeolis.Hs"
         },{
-            "engine_from" : "aeolis",
-            "engine_to" : "xbeach",
-            "var_from" : "zb",
-            "var_to" : "zb"
+            "var_from" : "aeolis.zb",
+            "var_to" : "xbeach.zb"
+        },{
+            "var_from" : "aeolis.zs",
+            "var_to" : "xbeach.zs"
         }
     ],
     "regimes" : {
-        "calm" : {
+        "stat" : {
             "xbeach" : {
-                "instat" : "stat",
-                "morfac" : 100.0
+                "instance" : "stat"
             },
             "aeolis" : {
                 "scheme" : "euler_backward",
-                "dt" : 3600.0,
+                "dt" : 60.0,
                 "accfac" : 10.0
             }
         },
-        "windy" : {
+        "instat" : {
             "xbeach" : {
-                "instat" : "stat",
-                "morfac" : 10.0
+                "instance" : "instat"
             },
             "aeolis" : {
                 "scheme" : "euler_backward",
-                "dt" : 600.0,
-                "accfac" : 1.0
-            }
-        },
-        "storm" : {
-            "xbeach" : {
-                "instat" : "instat",
-                "morfac" : 1.0
-            },
-            "aeolis" : {
-                "scheme" : "euler_forward",
                 "dt" : 60.0,
-                "accfac" : 1.0
+                "accfac" : 10.0
             }
         }
     },
     "scenario" : [
-        {"duration" : 3600, "regime" : "calm"},
-        {"duration" : 3600, "regime" : "windy"},
-        {"duration" : 3600, "regime" : "storm"},
-        {"duration" : 3600, "regime" : "windy"},
-        {"duration" : 3600, "regime" : "calm"}
+        [0.0, "stat"],
+        [730800.0, "instat"],
+        [1004400.0, "stat"],
+        [1890000.0, "instat"],
+        [2012400.0, "stat"],
+        [2239200.0, "instat"],
+        [2466000.0, "stat"],
+        [2815200.0, "instat"],
+        [3265200.0, "stat"],
+        [3826800.0, "instat"],
+        [3938400.0, "stat"],
+        [4352400.0, "instat"],
+        [4410000.0, "stat"],
+        [5115600.0, "instat"],
+        [5256000.0, "stat"],
+        [5612400.0, "instat"],
+        [5821200.0, "stat"],
+        [6451200.0, "instat"],
+        [6537600.0, "stat"],
+        [6973200.0, "instat"],
+        [7358400.0, "stat"],
+        [7491600.0, "instat"],
+        [7632000.0, "stat"],
+        [7783200.0, "instat"],
+        [7887600.0, "stat"],
+        [8161200.0, "instat"],
+        [8276400.0, "stat"],
+        [8640000.0, "instat"],
+        [8744400.0, "stat"],
+        [10047600.0, "instat"],
+        [10155600.0, "stat"],
+        [10674000.0, "instat"],
+        [10767600.0, "stat"],
+        [10990800.0, "instat"],
+        [11959200.0, "stat"],
+        [19112400.0, "instat"],
+        [19292400.0, "stat"],
+        [24256800.0, "instat"],
+        [24433200.0, "stat"],
+        [27082800.0, "instat"],
+        [27183600.0, "stat"],
+        [31536000.0, "instat"]
     ],
     "netcdf" : {
         "outputfile" : "windsurf.nc",
-        "outputvars" : ["zb", "zs", "H", "Ct", "Cu", "uw", "uth"],
+        "outputvars" : ["zb", "zs", "H", "Ct.avg", "Cu.avg", "uw.avg", "uth.avg", "mass.avg", "supply.avg"],
         "crs" : {
             "grid_mapping_name" : "oblique_stereographic",
             "epsg_code" : "EPSG:28992",
