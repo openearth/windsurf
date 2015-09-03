@@ -1,0 +1,76 @@
+%if _MESSAGE == 'WELCOME':
+======================================================================
+
+888       888 d8b               888  .d8888b.                    .d888
+888   o   888 Y8P               888 d88P  Y88b                  d88P" 
+888  d8b  888                   888 Y88b.                       888   
+888 d888b 888 888 88888b.   .d88888  "Y888b.   888  888 888d888 888888
+888d88888b888 888 888 "88b d88" 888     "Y88b. 888  888 888P"   888
+88888P Y88888 888 888  888 888  888       "888 888  888 888     888   
+8888P   Y8888 888 888  888 Y88b 888 Y88b  d88P Y88b 888 888     888   
+888P     Y888 888 888  888  "Y88888  "Y8888P"   "Y88888 888     888   
+
+                                                  >>> CONFIGURATOR <<<
+
+Windsurf is a composite model for simulating nearshore coastal proces-
+ses including both hydrodynamic and aeolian sediment transport. The
+support for many coastal processes makes that the setup of a Windsurf
+model can become quite complicated. This wizard guides you through the
+necessary steps.
+
+Note that in this wizard:
+* All input is case-INsensitive
+* In case the wizard asks for multiple values, enter the values one by
+  one and hit return twice to end the list
+
+======================================================================
+
+%elif _MESSAGE == 'CAPTION':
+----------------------------------------------------------------------
+${caption}
+----------------------------------------------------------------------
+
+%elif _MESSAGE == 'MODELCORES':
+What model cores do you want to be incuded?
+
+You can choose from "XBeach", "AeoLiS" and "CDM". Where XBeach
+includes hydrodynamic processes, AeoLiS includes supply-limited
+aeolian sediment transport and CDM includes spatially varying wind
+fields and morphological feedback. If you do not specify any cores,
+all cores are included.
+
+%elif _MESSAGE == 'EXCHANGES':
+What parameters are exchanged from model core "${model_from}" to "${model_to}"?
+
+%if i == 0:
+The different model cores share model parameters, like the
+bathymetry. The Windsurf model automatically determines when
+parameters between model cores need to be exchanged. You need to
+determine what parameters are exchanged. Be aware that the exchange of
+parameters between model cores can by asynchroneous.
+
+%endif
+Separate the parameter name in "${model_from}" and the parameter name
+in "${model_to}" by an equal sign (=). The names can be equal to each
+other.
+
+%elif _MESSAGE == 'REGIMES':
+What regimes do you want to distinguish during the simulation?
+
+A regime is related to physical wind and wave regimes (e.g. calm,
+windy or storm). By distinguishing different regimes you can change
+the model settings depending on the boundary conditions. For example,
+you can increase the time step and morphological factor for calm
+conditions compared to storm conditions. At this point it suffices to
+specify unique names for each regime that you want to distinguish. You
+will be able to configure each regime individually in a moment.
+
+%elif _MESSAGE == 'MODELCORES_IN_REGIME':
+What model cores are affected by regime "${regime}"?
+
+%elif _MESSAGE == 'PARAMS_IN_MODELCORE':
+What parameters are affected in model core "${model}" by regime "${regime}"?
+
+Separate parameter and value by an equal sign (=).
+
+%endif
