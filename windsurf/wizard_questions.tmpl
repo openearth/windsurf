@@ -65,12 +65,29 @@ conditions compared to storm conditions. At this point it suffices to
 specify unique names for each regime that you want to distinguish. You
 will be able to configure each regime individually in a moment.
 
-%elif _MESSAGE == 'MODELCORES_IN_REGIME':
+%elif _MESSAGE == 'REGIMES_MODELCORES':
 What model cores are affected by regime "${regime}"?
 
-%elif _MESSAGE == 'PARAMS_IN_MODELCORE':
+%elif _MESSAGE == 'REGIMES_MODELCORES_PARAMS':
 What parameters are affected in model core "${model}" by regime "${regime}"?
 
 Separate parameter and value by an equal sign (=).
+
+%elif _MESSAGE == 'REGIMES_DEFAULT':
+Now it is time to define what regime is to be applied during what
+period. You can do so by specifiying a time series file and a
+threshold value. The time series file contains two columns: the first
+is time in seconds and the second is a parameter value that is used to
+distinguish between regimes, e.g. the water level or wave height. The
+parameter value can also be an integer value that simply indicates
+what regime to use.
+
+First, what regime should be run by default?
+
+%elif _MESSAGE == 'REGIMES_TIMESERIES':
+What time series file should be used to determine if regime "${regime}" should be used?
+
+%elif _MESSAGE == 'REGIMES_THRESHOLD':
+What threshold value should be used with this time series?
 
 %endif

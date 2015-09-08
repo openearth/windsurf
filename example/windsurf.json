@@ -1,8 +1,7 @@
 {
     "time" : {
         "start" : 0.0,
-        "stop"  : 31536000.0,
-        "out"   : 3600.0
+        "stop"  : 31536000.0
     },
     "models" : {
         "xbeach" : {
@@ -103,6 +102,7 @@
     "netcdf" : {
         "outputfile" : "windsurf.nc",
         "outputvars" : ["zb", "zs", "H", "Ct.avg", "Cu.avg", "uw.avg", "uth.avg", "mass.avg", "supply.avg"],
+        "interval" : 3600.0,
         "crs" : {
             "grid_mapping_name" : "oblique_stereographic",
             "epsg_code" : "EPSG:28992",

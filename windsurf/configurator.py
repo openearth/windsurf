@@ -4,6 +4,7 @@ import json
 import logging
 import itertools
 import numpy as np
+import scipy.signal
 from mako.template import Template
 
 
@@ -39,6 +40,7 @@ class WindsurfConfigurator:
         if type(models) is not list:
             models = [models]
         for model in models:
+            model = model.lower()
             if model not in self.supported_models.keys():
                 logger.warn('Skipping unsupported model [%s]' % model)
             else:
@@ -59,6 +61,7 @@ class WindsurfConfigurator:
         if type(regimes) is not list:
             regimes = [regimes]
         for regime in regimes:
+            regime = regime.lower()
             self.regimes[regime] = {}
 
 
@@ -95,7 +98,14 @@ class WindsurfConfigurator:
         self.disp(
             self.get_message('WELCOME')
         )
+
+        models = self.input(
+            self.get_message('MODELCORES'),
+            default=sorted(self.supported_models.keys()),
+            multiple=True
+        )
         
+        # model cores
         models = self.input(
             self.get_message('MODELCORES'),
             default=sorted(self.supported_models.keys()),
@@ -104,6 +114,7 @@ class WindsurfConfigurator:
 
         self.add_models(models)
 
+        # variable exchange
         for i, (a, b) in enumerate(itertools.permutations(self.models, 2)):
             exchanges = self.input(
                 self.get_message('EXCHANGES', i=i, model_from=a, model_to=b),
@@ -112,6 +123,7 @@ class WindsurfConfigurator:
 
             self.add_exchanges(a, b, exchanges)
 
+        # regimes
         regimes = self.input(
             self.get_message('REGIMES'),
             default=['calm', 'storm'],
@@ -127,18 +139,48 @@ class WindsurfConfigurator:
             )
 
             models = self.input(
-                self.get_message('MODELCORES_IN_REGIME', regime=regime),
+                self.get_message('REGIMES_MODELCORES', regime=regime),
                 default=sorted(self.models.keys()),
                 multiple=True)
 
             for model in models:
 
                 params = self.input(
-                    self.get_message('PARAMS_IN_MODELCORE', model=model, regime=regime),
+                    self.get_message('REGIMES_MODELCORES_PARAMS', model=model, regime=regime),
                     multiple=True)
 
                 self.add_params(regime, model, params)
 
+
+        # scenario
+        scenario = WindsurfScenario()
+
+        default = self.input(
+            self.get_message('REGIMES_DEFAULT'),
+            default=sorted(self.regimes.keys())[0])
+
+        scenario.add_regime(default)
+
+        for regime in self.regimes:
+            if regime == default:
+                continue
+            else:
+                timeseries_file = self.input(
+                    self.get_message('REGIMES_TIMESERIES', regime=regime))
+                threshold = self.input(
+                    self.get_message('REGIMES_THRESHOLD', regime=regime))
+
+                scenario.add_regime(regime)
+
+                if os.path.exists(timeseries_file):
+                    ts = np.loadtxt(timeseries_file)[:,:2]
+                else:
+                    print 'ERROR: file not found, skipped regime'
+
+                scenario.add_condition(ts[:,0], ts[:,1], threshold=threshold)
+
+        self.scenario = scenario.render_scenario()
+        
         return self.compile_json()
             
 
@@ -151,8 +193,12 @@ class WindsurfConfigurator:
         if default is not None:
             if type(default) is list:
                 defaultstr = ', '.join(default)
-            elif type(default) is not str:
-                defaulttr = str(default)
+            else:
+                if type(default) is not str:
+                    defaultstr = str(default)
+                else:
+                    defaultstr = default
+                default = [default]
                 
             q = '%s\n\nDefault: %s' % (q, defaultstr)
 
@@ -166,7 +212,7 @@ class WindsurfConfigurator:
         a = []
         r = ''
         while True:
-            r = raw_input(q).strip().lower()
+            r = raw_input(q).strip()
             q = '      > '
             if len(r) > 0:
                 a.append(r)
@@ -199,3 +245,88 @@ class WindsurfConfigurator:
         markers['_MESSAGE'] = message
         return template.render(**markers).strip()
         
+
+class WindsurfScenario:
+
+
+    regimes = {}
+    regimes_order = []
+    selected_regime = None
+
+    
+    def __init__(self, start=0., stop=3600.*24.*365, step=3600., interval=3600.*35, time=None):
+        self.interval = interval
+        if time is not None:
+            self.t = np.asarray(time)
+        else:
+            self.t = np.arange(start, stop+step, step)
+
+
+    def add_regime(self, regime, initialize=True):
+        self.regimes_order.append(regime)
+        self.regimes[regime] = np.asarray([initialize] * len(self.t))
+        self.select_regime(regime)
+
+
+    def select_regime(self, regime):
+        if regime in self.regimes.keys():
+            self.selected_regime = regime
+        else:
+            raise ValueError('Unknown regime [%s]' % regime)
+
+
+    def add_condition(self, t, y, threshold=None, regime=None, exclude=False):
+
+        t = np.asarray(t)
+        y = np.asarray(y)
+        
+        # set regime
+        if regime is None:
+            regime = self.selected_regime
+
+        # get all peaks
+        peaks = np.asarray(scipy.signal.argrelmax(y)[0])
+
+        # remove peaks below threshold
+        if threshold is not None:
+            peaks = np.delete(peaks, np.where(y[peaks] < threshold)[0])
+
+        # add troughs in between peaks
+        troughs = []
+        for peak in peaks:
+            t1 = t[peak] - self.interval/2
+            t2 = t[peak] + self.interval/2
+            idx1 = (t >= t1) & (t <= t[peak])
+            idx2 = (t <= t2) & (t >= t[peak])
+            troughs.append(np.where(idx1)[0][0] + np.argmin(y[idx1]))
+            troughs.append(peak + np.argmin(y[idx2]))
+
+        # join close troughs
+        while True:
+            idx = np.where(t[troughs[2::2]] - t[troughs[1:-1:2]] < self.interval)[0] * 2 + 1
+            if len(idx) == 0:
+                break
+            troughs = np.delete(troughs, np.concatenate((idx, idx+1)))
+        troughs = np.concatenate(([0], troughs, [len(t)]))
+
+        # determine regimes
+        idx = np.asarray(np.sum([[np.mod(i,2)==0] * n for i, n in enumerate(troughs[1:] - troughs[:-1])]))
+        idx = np.interp(self.t, t, idx) >= .5 # interpolate to generic time axis
+        self.regimes[regime][idx] = exclude
+
+
+    def render_scenario(self):
+
+        scenario = np.asarray([None] * len(self.t))
+
+        for regime in self.regimes_order:
+            scenario[self.regimes[regime]] = regime
+
+        p = None
+        scenario_consolidated = []
+        for i, (t, s) in enumerate(zip(self.t, scenario)):
+            if s != p:
+                scenario_consolidated.append((t,s))
+            p = s
+
+        return scenario_consolidated
