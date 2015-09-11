@@ -325,7 +325,7 @@ class Windsurf(IBmi):
                 self.config = json.load(fp)
                 self.tstart = self.config['time']['start']
                 self.tstop = self.config['time']['stop']
-                self.tout = self.config['output']['interval']
+                self.tout = self.config['netcdf']['interval']
                 self.models = self.config['models']
         else:
             raise IOError('File not found: %s' % self.configfile)
