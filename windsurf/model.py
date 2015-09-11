@@ -3,6 +3,7 @@ import re
 import time
 import json
 import logging
+import traceback
 import importlib
 import numpy as np
 from bmi.api import IBmi
@@ -476,11 +477,19 @@ class Windsurf(IBmi):
             now = e['_time']
 
             # exchange data if another model engine is selected
-            if engine != engine_last:
-                self._exchange_data(engine)
+            try:
+                if engine != engine_last:
+                    self._exchange_data(engine)
+            except:
+                logger.error('Failed to exchange data from "%s" to "%s"!' % (engine_last, engine))
+                logger.error(traceback.format_exc())
 
             # step model engine in future
-            e['_wrapper'].update(dt)
+            try:
+                e['_wrapper'].update(dt)
+            except:
+                logger.error('Failed to update "%s"!' % engine)
+                logger.error(traceback.format_exc())
 
             # update time
             e['_time'] = e['_wrapper'].get_current_time()
@@ -537,10 +546,19 @@ class Windsurf(IBmi):
                     exchange['var_from'],
                     exchange['var_to']))
 
-                val = self.models[engine_from]['_wrapper'].get_var(var_from)
-                self.models[engine_to]['_wrapper'].set_var(var_to, val)
+                try:
+                    val = self.models[engine_from]['_wrapper'].get_var(var_from)
+                except:
+                    logger.error('Failed to get "%s" from "%s"!' % (var_from, engine_from))
+                    logger.error(traceback.format_exc())
 
+                try:
+                    self.models[engine_to]['_wrapper'].set_var(var_to, val)
+                except:
+                    logger.error('Failed to set "%s" in "%s"!' % (var_to, engine_to))
+                    logger.error(traceback.format_exc())
     
+
     def _get_engine_maxlag(self):
         '''Get model engine with maximum lag from current time
 
