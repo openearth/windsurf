@@ -44,7 +44,8 @@ def initialize(ncfile, dimensions, variables=None, attributes=None, crs=None):
 
     '''
 
-    with netCDF4.Dataset(ncfile, 'w') as nc:
+    try:
+        nc = netCDF4.Dataset(ncfile, 'w')
 
         ## add dimensions
         nc.createDimension('x', len(dimensions['x']))
@@ -245,6 +246,11 @@ def initialize(ncfile, dimensions, variables=None, attributes=None, crs=None):
 #                grp.setncattr(k, int(v))
 #            else:
 #                grp.setncattr(k, v)
+    finally:
+        try:
+            nc.close()
+        except:
+            pass
 
 
 def append(ncfile, idx, variables):
@@ -262,30 +268,21 @@ def append(ncfile, idx, variables):
 
     '''
 
-    with netCDF4.Dataset(ncfile, 'a') as nc:
+    try:
+        nc = netCDF4.Dataset(ncfile, 'a')
         nc.variables['time'][idx] = variables['time']
         for name, value in variables.iteritems():
             nc.variables[name][idx,...] = value
-#            if 'sum' in self.outputtypes:
-#                nc.variables['%s.sum' % var][idx,...] \
-#                    = model.get_var('%s.sum' % var).copy()
-#            if 'avg' in self.outputtypes:
-#                nc.variables['%s.avg' % var][idx,...] \
-#                    = model.get_var('%s.avg' % var).copy()
-#            if 'var' in self.outputtypes:
-#                nc.variables['%s.var' % var][idx,...] \
-#                    = model.get_var('%s.var' % var).copy()
-#            if 'min' in self.outputtypes:
-#                nc.variables['%s.min' % var][idx,...] \
-#                    = model.get_var('%s.min' % var).copy()
-#            if 'max' in self.outputtypes:
-#                nc.variables['%s.max' % var][idx,...] \
-#                    = model.get_var('%s.max' % var).copy()
 
         nc.variables['time_bounds'][idx,0] \
             = 0 if idx == 0 else nc.variables['time'][idx]
         nc.variables['time_bounds'][idx,1] = variables['time']
-    
+    finally:
+        try:
+            nc.close()
+        except:
+            pass
+            
 
 def set_ncattr(nc, key, value):
     '''Set netCDF4 attribute safe for boolean values

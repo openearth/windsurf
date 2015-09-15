@@ -99,6 +99,11 @@
         [27183600.0, "stat"],
         [31536000.0, "instat"]
     ],
+    "restart" : {
+        "variables" : ["xbeach.zb","xbeach.Fx","xbeach.Fy","xbeach.Sxy","xbeach.Syy","xbeach.Sxx","xbeach.H","xbeach.cgx","xbeach.cgy","xbeach.cx","xbeach.cy","xbeach.ctheta","xbeach.ee","xbeach.rr","xbeach.k","xbeach.c","xbeach.cg","xbeach.hh","xbeach.zs","xbeach.zs0","xbeach.uu","xbeach.vu","xbeach.uv","xbeach.vv","xbeach.qx","xbeach.qy","xbeach.E","xbeach.R","xbeach.urms","xbeach.D","xbeach.Qb","xbeach.ust","xbeach.ueu","xbeach.vev","xbeach.u","xbeach.v","xbeach.ue","xbeach.ve","xbeach.wetu","xbeach.wetv","xbeach.wetz","xbeach.hu","xbeach.hv","xbeach.hum","xbeach.hvm","xbeach.vmag","xbeach.ccg","xbeach.uwf","xbeach.vwf","xbeach.ustr","xbeach.usd","xbeach.DR","xbeach.ur","xbeach.Susg","xbeach.Svsg","xbeach.Subg","xbeach.Svbg","xbeach.ceqbg","xbeach.ceqsg","xbeach.ua","xbeach.BR","xbeach.kb","xbeach.pbbed","xbeach.bedfriccoef","xbeach.taubx","xbeach.tauby","xbeach.Df","xbeach.Dp","xbeach.Sutot","xbeach.Svtot","xbeach.cctot","xbeach.cf","xbeach.cfu","xbeach.cfv","xbeach.viscu","xbeach.viscv", "aeolis.uw", "aeolis.udir", "aeolis.zb", "aeolis.zs", "aeolis.Hs", "aeolis.uth", "aeolis.moist", "aeolis.Cu", "aeolis.Ct", "aeolis.supply", "aeolis.thlyr", "aeolis.mass"],
+        "times" : [86400.0, 172800.0, 259200.0, 2678400.0, 5270400.0, 7948800.0, 10627200.0, 13046400.0, 15724800.0, 18316800.0, 20995200.0, 23587200.0, 26265600.0, 28857600.0, 31536000.0],
+        "backup" : true
+    },
     "netcdf" : {
         "outputfile" : "windsurf.nc",
         "outputvars" : ["zb", "zs", "H", "Ct.avg", "Cu.avg", "uw.avg", "uth.avg", "mass.avg", "supply.avg"],

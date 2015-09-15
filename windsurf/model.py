@@ -2,10 +2,12 @@ import os
 import re
 import time
 import json
+import shutil
 import logging
 import traceback
 import importlib
 import numpy as np
+import cPickle as pickle
 from bmi.api import IBmi
 from bmi.wrapper import BMIWrapper
 
@@ -28,7 +30,7 @@ class WindsurfWrapper:
     regime = None
     
 
-    def __init__(self, configfile=None):
+    def __init__(self, configfile=None, restartfile=None):
         '''Initialize the class
 
         Parameters
@@ -36,18 +38,21 @@ class WindsurfWrapper:
         configfile : str
             path to JSON configuration file, see
             :func:`~windsurf.model.Windsurf.load_configfile`
+        restartfile : str
+            path to Pickle restart file
 
         '''
 
         self.configfile = configfile
+        self.restartfile = restartfile
+        self.restart = restartfile is not None
 
 
     def run(self):
         '''Start model time loop'''
 
-        self.engine = Windsurf(self.configfile)
+        self.engine = Windsurf(configfile=self.configfile)
         self.engine.initialize()
-        self.output_init()
 
         self.t = 0
         self.i = 0
@@ -56,8 +61,14 @@ class WindsurfWrapper:
         self.tlast = 0.0 # in simulation time
         self.tstart = time.time() # in real-world time
         self.tstop = self.engine.get_end_time() # in simulation time
-        
-        self.output()
+
+        self.output_init()
+
+        if self.restart:
+            self.load_restart_file()
+        else:
+            self.output()
+
         while self.t < self.tstop:
             self.set_regime()
             self.engine.update()
@@ -80,8 +91,8 @@ class WindsurfWrapper:
 
         '''
 
-        regimes = self.engine.config['regimes']
-        scenario = self.engine.config['scenario']
+        regimes = self.engine.get_config_value('regimes')
+        scenario = self.engine.get_config_value('scenario')
         times = np.asarray([s[0] for s in scenario])
         idx = np.where(times <= self.t)[0].max()
             
@@ -110,46 +121,127 @@ class WindsurfWrapper:
 
         '''
 
-        logger.debug('Initializing output...')
+        outputfile = self.engine.get_config_value('netcdf', 'outputfile')
+        outputvars = self.engine.get_config_value('netcdf', 'outputvars')
+        attributes = self.engine.get_config_value('netcdf', 'attributes')
+        crs = self.engine.get_config_value('netcdf', 'crs')
         
-        cfg = self.engine.config['netcdf']
-
-        # get dimension names for each variable
-        variables = {
-            v : { 'dimensions' : self.engine.get_dimensions(v) }
-            for v in cfg['outputvars']
-        }
-
-        for v in variables.iterkeys():
-            logger.info('Creating netCDF output for "%s"' % v)
+        if outputfile is not None and outputvars is not None:
+            if not self.restart or not os.path.exists(outputfile):
+            
+                logger.debug('Initializing output...')
         
-        netcdf.initialize(cfg['outputfile'],
-                          self.read_dimensions(),
-                          variables=variables,
-                          attributes=cfg['attributes'],
-                          crs=cfg['crs'])
+                # get dimension names for each variable
+                variables = {
+                    v : { 'dimensions' : self.engine.get_dimensions(v) }
+                    for v in outputvars
+                }
+
+                for v in variables.iterkeys():
+                    logger.info('Creating netCDF output for "%s"' % v)
+        
+                netcdf.initialize(outputfile,
+                                  self.read_dimensions(),
+                                  variables=variables,
+                                  attributes=attributes,
+                                  crs=crs)
 
         
     def output(self):
         '''Write model data to netCDF4 output file'''
 
+        # dump restart and/or backup file if requested
+        times = self.engine.get_config_value('restart', 'times')
+        if times is not None:
+            tr = np.asarray(times)
+            if self.tlast > 0. and np.any((tr <= self.t) & (tr > self.tlast)):
+                self.dump_restart_file()
+                if self.engine.get_config_value('restart', 'backup'):
+                    self.create_backup()
+    
+        # write output if requested
         if np.mod(self.t, self.engine.tout) < self.t - self.tlast:
 
-            logger.debug('Writing output at t=%0.2f...' % self.t)
+            outputfile = self.engine.get_config_value('netcdf', 'outputfile')
+            outputvars = self.engine.get_config_value('netcdf', 'outputvars')
+
+            if outputfile is not None and outputvars is not None:
+                
+                logger.debug('Writing output at t=%0.2f...' % self.t)
             
-            cfg = self.engine.config['netcdf']
-            
-            # get dimension data for each variable
-            variables = {v : self.engine.get_var(v) for v in cfg['outputvars']}
-            variables['time'] = self.t
+                # get dimension data for each variable
+                variables = {v : self.engine.get_var(v) for v in outputvars}
+                variables['time'] = self.t
         
-            netcdf.append(cfg['outputfile'],
-                          idx=self.iout,
-                          variables=variables)
+                netcdf.append(outputfile,
+                              idx=self.iout,
+                              variables=variables)
 
-            self.iout += 1
+                self.iout += 1
+            
+            
+    def load_restart_file(self):
+        '''Load restart file from previous run'''
+
+        if os.path.exists(self.restartfile):
+            with open(self.restartfile, 'r') as fp:
+                dump = pickle.load(fp)
+                
+                self.engine.update(-dump['time'])
+                self.t = self.engine.get_current_time()
+                self.tlast = self.t
+                self.iout = dump['iout']
+                self.i = dump['i']
+                    
+                for engine, variables in dump['data'].iteritems():
+                    for var, val in variables.iteritems():
+                        self.engine.set_var('%s.%s' % (engine, var), val)
+                        
+            logger.info('Loaded restart file "%s".' % self.restartfile)
+        else:
+            logger.error('Restart file "%s" not found' % self.restartfile)
+
+            
+    def dump_restart_file(self):
+        '''Dump restart file to start next run'''
+
+        fname = 'restart.%d.pkl' % self.t
+        if not os.path.exists(fname):
+
+            variables = self.engine.get_config_value('restart', 'variables')
+            if variables is not None:
+
+                dump = {
+                    'time' : self.t,
+                    'iout' : self.iout,
+                    'i' : self.i,
+                    'data' : {}
+                }
+        
+                for model in self.engine.models.iterkeys():
+                    dump['data'][model] = {}
+
+                for var in variables:
+                    val = self.engine.get_var(var)
+                    engine, var = self.engine._split_var(var)
+                    dump['data'][engine][var] = val
+            
+                with open(fname, 'w') as fp:
+                    pickle.dump(dump, fp)
+                    
+                logger.info('Written restart file "%s".' % fname)
 
 
+    def create_backup(self):
+        '''Create backup file of output file'''
+
+        logger.info('Creating backup file...')
+
+        outputfile = self.engine.get_config_value('netcdf', 'outputfile')
+        if outputfile is not None:
+            shutil.copyfile(outputfile, '%s~' % outputfile)
+
+            
     def read_dimensions(self):
         '''Read dimensions of composite domain
 
@@ -323,10 +415,10 @@ class Windsurf(IBmi):
 
             with open(fname, 'r') as fp:
                 self.config = json.load(fp)
-                self.tstart = self.config['time']['start']
-                self.tstop = self.config['time']['stop']
-                self.tout = self.config['netcdf']['interval']
-                self.models = self.config['models']
+                self.tstart = self.get_config_value('time', 'start')
+                self.tstop = self.get_config_value('time', 'stop')
+                self.tout = self.get_config_value('netcdf', 'interval')
+                self.models = self.get_config_value('models')
         else:
             raise IOError('File not found: %s' % self.configfile)
         
@@ -461,6 +553,7 @@ class Windsurf(IBmi):
 
         '''
 
+        t0 = self.t
         target_time = None
         engine_last = None
 
@@ -512,8 +605,8 @@ class Windsurf(IBmi):
 
         self.t = np.mean([m['_time'] for m in self.models.itervalues()])
         logger.debug('Arrived in future at t=%0.2f' % self.t)
-        
-    
+
+
     def finalize(self):
         '''Finalize model engines'''
 
@@ -537,26 +630,28 @@ class Windsurf(IBmi):
 
         '''
 
-        for exchange in self.config['exchange']:
-            engine_to, var_to = self._split_var(exchange['var_to'])
-            engine_from, var_from = self._split_var(exchange['var_from'])
-            if engine_to == engine:
+        exchange = self.get_config_value('exchange')
+        if exchange is not None:
+            for ex in exchange:
+                engine_to, var_to = self._split_var(ex['var_to'])
+                engine_from, var_from = self._split_var(ex['var_from'])
+                if engine_to == engine:
                 
-                logger.debug('Exchange "%s" to "%s"' % (
-                    exchange['var_from'],
-                    exchange['var_to']))
+                    logger.debug('Exchange "%s" to "%s"' % (
+                        ex['var_from'],
+                        ex['var_to']))
 
-                try:
-                    val = self.models[engine_from]['_wrapper'].get_var(var_from)
-                except:
-                    logger.error('Failed to get "%s" from "%s"!' % (var_from, engine_from))
-                    logger.error(traceback.format_exc())
+                    try:
+                        val = self.models[engine_from]['_wrapper'].get_var(var_from)
+                    except:
+                        logger.error('Failed to get "%s" from "%s"!' % (var_from, engine_from))
+                        logger.error(traceback.format_exc())
 
-                try:
-                    self.models[engine_to]['_wrapper'].set_var(var_to, val)
-                except:
-                    logger.error('Failed to set "%s" in "%s"!' % (var_to, engine_to))
-                    logger.error(traceback.format_exc())
+                    try:
+                        self.models[engine_to]['_wrapper'].set_var(var_to, val)
+                    except:
+                        logger.error('Failed to set "%s" in "%s"!' % (var_to, engine_to))
+                        logger.error(traceback.format_exc())
     
 
     def _get_engine_maxlag(self):
@@ -650,6 +745,37 @@ class Windsurf(IBmi):
             
         return engine, name
 
+
+    def get_config_value(self, *keys, **kwargs):
+        '''Get configuration values by traversing JSON structure while checking existence
+
+        Parameters
+        ----------
+        keys : str
+            traverse into JSON configuration structure
+
+        Return
+        ------
+        value form JSON configuration file or (partial) structure or None if non-existent
+
+        '''
+
+        if kwargs.has_key('cfg'):
+            cfg = kwargs['cfg']
+        else:
+            cfg = None
+            
+        if cfg is None:
+            cfg = self.config
+
+        if len(keys) > 0:
+            if cfg.has_key(keys[0]):
+                cfg = self.get_config_value(*keys[1:], cfg=cfg[keys[0]])
+            else:
+                cfg = None
+
+        return cfg
+    
         
     @staticmethod
     def get_dimensions(var):

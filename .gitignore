@@ -4,4 +4,6 @@
 *.dat
 *.bcf
 *.nc
+*~
+*.pkl
 XB*.txt

@@ -11,13 +11,14 @@ def windsurf():
     '''windsurf : a composite model for simulating integrated nearshore and aeolian sediment transport
 
     Usage:
-        windsurf <config> [--verbose=LEVEL]
+        windsurf <config> [--restart=FILE] [--verbose=LEVEL]
 
     Positional arguments:
         config             configuration file
 
     Options:
         -h, --help         show this help message and exit
+        --restart=FILE     use restart file from previous run
         --verbose=LEVEL    print logging messages [default: 30]
 
     '''
@@ -31,7 +32,8 @@ def windsurf():
         logging.root.setLevel(logging.NOTSET)
 
     # start model
-    WindsurfWrapper(arguments['<config>']).run()
+    WindsurfWrapper(configfile=arguments['<config>'],
+                    restartfile=arguments['--restart']).run()
 
 
 def windsurf_setup():
