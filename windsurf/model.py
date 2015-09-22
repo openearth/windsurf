@@ -525,10 +525,13 @@ class Windsurf(IBmi):
                 )
             except RuntimeError:
                 # try python package
-                p, c = props['engine'].rsplit('.', 1)
-                mod = importlib.import_module(p)
-                engine = getattr(mod, c)
-                self.models[name]['_wrapper'] = engine(configfile=props['configfile'] or '')
+                try:
+                    p, c = props['engine'].rsplit('.', 1)
+                    mod = importlib.import_module(p)
+                    engine = getattr(mod, c)
+                    self.models[name]['_wrapper'] = engine(configfile=props['configfile'] or '')
+                except:
+                    raise RuntimeError('Engine not found [%s]' % props['engine'])
 
             # initialize time
             self.models[name]['_time'] = self.t
