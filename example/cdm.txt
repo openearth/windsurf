@@ -1,0 +1,114 @@
+#
+#  $Id: default.par,v 1.11 2004/09/22 15:13:47 schatz Exp $
+#
+#  reference parameter file ( NOT CHANGE IT )
+#
+
+################################
+# grid
+#
+NX = 374		# number of grid columns
+NY = 4 			# number of grid lines (c1: must be power of 2; c2: 4 is for 2D, higher for 3D) 
+dx = 1			# (m)	such that actual lenght is NX*dx X NY*dx
+dt_max = 1000	# time step (constant, max is not important) (sec)
+
+Nt = 10000 		# number of iterations (such that total time is Nt*dt_max)
+Nt0 = 0 		# to continue a previous simulation Nt0 = Nt of prev.
+
+save.every  = 200 	# nuber of iterations between saved files (such that the number of saved files are Nt/save.every)
+save.x-line = 0     # changing to 1 will reverse the reading of rows vs. columns; for Gnu plot set to 0, to reverse set to 1
+save.dir    = cdm # name of directory where output data is stored
+
+calc.x_periodic = 0 	# 0: is open; 1: is periodic b.c.
+calc.y_periodic = 1 	# 0: is open; 1: is periodic b.c.
+
+calc.shift_back = 0 	# 0: fixed; 1: to follow center of mass
+
+################################
+# influx:  const or outflux
+influx = const
+q_in = 0.0 #fraction of maximum flux (from 0 to 1)
+
+###############################################################################
+# Wind model: const, flatrand (flat probability distribution), sine
+# (sinusoidal variation) or bi (bidirectional)
+wind = const # constant
+
+constwind.u = 0.35 # shear velocity (m/s) (usually from 0.2 [~transport threshold] to 0.5 [very large winds])
+
+wind.fraction = 0.05 # fraction of the year wind is above threshold (only used for time scales) such that real time is Nt*dt_max / wind.fraction
+
+###############################################################################
+# Vegetation model:
+#
+veget.calc 	= 1  	# 0: no veget cal. 1: calc. veg.
+
+## vegetation growth (from Duran & Moore, 2013):
+veget.xmin 	= 20 #15 #20 	# vegetation limit: L_veg (m) 
+veget.Tveg 	= 10.0 	# (days) characteristic time of vegetation cover growth
+
+## wind reduction due to vegetation (from Duran et al. 2008, geomorphology):
+veget.sigma = 1.5 	# ratio of plant basal to frontal area
+veget.beta 	= 150	# ratio of plant drag coefficitent to bare sand drag
+veget.m 	= 0.16	# reduction parameter (empirical fitting parameter)
+
+# from Duran & Moore (2013)
+# Roughness factor = veget.m * veget.beta / veget.sigma
+
+###############################################################################
+### beach param:
+calc.shore = 1 		# 1: use shoreline
+
+## 
+beach.tau_t_L = 0.05 	# ( h_w from Duran & Moore, 2013)
+
+## shore geometry (initial condition, from Duran & Moore 2013)
+beach.angle = 1 		# shoreface angle (degrees)
+shore.MHWL = 0.3 		# MHWL relative to the watertable
+shore.sealevel = 0 		# watertable elevation
+
+#########################################
+# INITIAL CONDITIONS						
+#########################################
+# initial vegetation
+#
+veget.Init-Surf = plain 
+
+# ---- flat surface, initialise with constant: Init-Surf = plain
+veget.plain.Height = 0.0
+
+#########################################
+# initial sand surface
+#
+Init-Surf = beach # either plain, beach or init_h
+
+# ---- flat surface, initialise with constant: Init-Surf = plain
+plain.Height = 0.0
+
+# ----  initialisation from file: Init-Surf = init_h ----
+init_h.file = h_init.dat 	# from h.#####.dat
+
+# ---- beach: Init-Surf = beach ----
+beach.h = 0.3 		# MHWL relative to watertable
+
+#########################################
+# SAVING FIELDS
+#########################################
+# suppress saving of some variables:
+# dontsave.<truncated file name> = 1
+# for example:
+dontsave.veget = 0
+dontsave.u = 1
+dontsave.flux= 1
+dontsave.flux_s= 1
+dontsave.shear= 0
+dontsave.shear_pert= 1
+dontsave.stall= 1
+dontsave.rho = 1
+dontsave.h_deposit= 1
+dontsave.h_nonerod= 1
+dontsave.h_sep= 1
+dontsave.dhdt= 1
+
+#########################################
+

@@ -13,6 +13,11 @@
             "engine" : "aeolis",
             "engine_path" : "/Users/hoonhout/Github/aeolis/src/.libs/",
             "configfile" : "aeolis.txt"
+        },
+        "cdm" : {
+            "engine" : "cdm",
+            "engine_path" : "/Users/hoonhout/Github/cdm/.libs/",
+            "configfile" : "cdm.txt"
         }
     },
     "exchange" : [
