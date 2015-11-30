@@ -4,7 +4,8 @@ from model import WindsurfWrapper
 from configurator import WindsurfConfigurator
 
 
-logging.basicConfig(format='%(asctime)-15s %(name)-8s %(levelname)-8s %(message)s')
+logging.basicConfig(filename='windsurf.log',
+                    format='%(asctime)-15s %(name)-8s %(levelname)-8s %(message)s')
 
 
 def windsurf():

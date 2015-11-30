@@ -796,6 +796,6 @@ class Windsurf(IBmi):
         elif var in []:
             dims = (u'time',)
         else:
-            dims = None
+            dims = (u'time', u'y', u'x')
             
         return dims
