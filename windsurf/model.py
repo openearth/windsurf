@@ -10,6 +10,7 @@ import numpy as np
 import cPickle as pickle
 from bmi.api import IBmi
 from bmi.wrapper import BMIWrapper
+from multiprocessing import Process
 
 import netcdf, parsers
 
@@ -48,7 +49,21 @@ class WindsurfWrapper:
         self.restart = restartfile is not None
 
 
-    def run(self):
+    def run(self, callback=None, subprocess=True):
+        '''Spawn model time loop'''
+
+        if subprocess:
+
+            p = Process(target=self._run,
+                        args=(callback,))
+            p.start()
+            p.join()
+
+        else:
+            self._run(callback)
+
+            
+    def _run(self, callback=None):
         '''Start model time loop'''
 
         self.engine = Windsurf(configfile=self.configfile)
@@ -70,6 +85,8 @@ class WindsurfWrapper:
             self.output()
 
         while self.t < self.tstop:
+            if callback is not None:
+                callback(self.engine, self.t)
             self.set_regime()
             self.engine.update()
             self.t = self.engine.get_current_time()
