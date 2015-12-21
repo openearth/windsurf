@@ -1,4 +1,5 @@
 import netCDF4
+import logging
 from datetime import datetime
 
 
@@ -281,7 +282,7 @@ def append(ncfile, idx, variables):
         try:
             nc.close()
         except:
-            pass
+            logging.debug('Failed to close netCDF file')
             
 
 def set_ncattr(nc, key, value):

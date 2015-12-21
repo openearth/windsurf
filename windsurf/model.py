@@ -156,7 +156,7 @@ class WindsurfWrapper:
 
                 for v in variables.iterkeys():
                     logger.info('Creating netCDF output for "%s"' % v)
-        
+
                 netcdf.initialize(outputfile,
                                   self.read_dimensions(),
                                   variables=variables,
@@ -175,7 +175,7 @@ class WindsurfWrapper:
                 self.dump_restart_file()
                 if self.engine.get_config_value('restart', 'backup'):
                     self.create_backup()
-    
+
         # write output if requested
         if np.mod(self.t, self.engine.tout) < self.t - self.tlast:
 
@@ -311,7 +311,7 @@ class WindsurfWrapper:
         if len(cfg_aeolis) > 0:
             dimensions['layers'] = np.arange(cfg_aeolis['nlayers']+3) * \
                                    cfg_aeolis['layer_thickness'] # +3 because of dummy layers in AeoLiS
-            dimensions['fractions'] = cfg_aeolis['grain_size']
+            dimensions['fractions'] = cfg_aeolis['grain_size'][:cfg_aeolis['nfractions']]
         else:
             dimensions['layers'] = []
             dimensions['fractions'] = []
@@ -753,7 +753,7 @@ class Windsurf(IBmi):
             name = '.'.join(parts)
 
         if engine is None:
-            if name.split('.')[0] in ['Cu', 'Ct', 'supply', 'mass', 'uth',
+            if name.split('.')[0] in ['Cu', 'Ct', 'supply', 'pickup', 'mass', 'uth',
                                       'uw', 'uws', 'uwn', 'udir']:
                 engine = 'aeolis'
             elif name.split('.')[0] in ['zb', 'zs', 'zs0', 'H']:
@@ -806,7 +806,7 @@ class Windsurf(IBmi):
             dims = (u'time', u'y', u'x', u'layers', u'fractions')
         elif var in ['d10', 'd50', 'd90', 'moist', 'thlyr']:
             dims = (u'time', u'y', u'x', u'layers')
-        elif var in ['Cu', 'Ct', 'uth', 'supply', 'p']:
+        elif var in ['Cu', 'Ct', 'uth', 'supply', 'pickup', 'p']:
             dims = (u'time', u'y', u'x', u'fractions')
         elif var in ['x', 'z', 'zb', 'zs', 'uw', 'udir', 'H']:
             dims = (u'time', u'y', u'x')
