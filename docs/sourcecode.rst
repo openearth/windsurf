@@ -9,7 +9,7 @@ documented in the following sections.
 model
 -----
 
-.. automodule:: windsurf.model
+.. automodule:: model
    :members:
    :private-members:
    :special-members:
@@ -17,7 +17,7 @@ model
 netcdf
 ------
 
-.. automodule:: windsurf.netcdf
+.. automodule:: netcdf
    :members:
    :private-members:
    :special-members:
@@ -25,7 +25,7 @@ netcdf
 parsers
 -------
 
-.. automodule:: windsurf.parsers
+.. automodule:: parsers
    :members:
    :private-members:
    :special-members:
@@ -33,7 +33,7 @@ parsers
 console
 -------
 
-.. automodule:: windsurf.console
+.. automodule:: console
    :members:
    :private-members:
    :special-members:
