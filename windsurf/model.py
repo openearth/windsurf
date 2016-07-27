@@ -1,5 +1,6 @@
 import os
 import re
+import imp
 import time
 import json
 import shutil
@@ -54,17 +55,20 @@ class WindsurfWrapper:
 
         if subprocess:
 
-            p = Process(target=self._run,
+            p = Process(target=self.start,
                         args=(callback,))
             p.start()
             p.join()
 
         else:
-            self._run(callback)
+            self.start(callback)
 
             
-    def _run(self, callback=None):
+    def start(self, callback=None):
         '''Start model time loop'''
+
+        # parse callback
+        callback = self.parse_callback(callback)
 
         self.engine = Windsurf(configfile=self.configfile)
         self.engine.initialize()
@@ -86,7 +90,7 @@ class WindsurfWrapper:
 
         while self.t < self.tstop:
             if callback is not None:
-                callback(self.engine, self.t)
+                callback(self.engine)
             self.set_regime()
             self.engine.update()
             self.t = self.engine.get_current_time()
@@ -129,6 +133,43 @@ class WindsurfWrapper:
                     self.engine.set_var('%s.%s' % (engine, name), np.asarray(value))
 
         
+    def parse_callback(self, callback):
+        '''Parses callback definition and returns function
+
+        The callback function can be specified in two formats:
+
+        - As a native Python function
+        - As a string refering to a Python script and function,
+          separated by a colon (e.g. ``example/callback.py:function``)
+
+        Parameters
+        ----------
+        callback : str or function
+            Callback definition
+
+        Returns
+        -------
+        function
+            Python callback function
+
+        '''
+
+        if isinstance(callback, str):
+            if ':' in callback:
+                fname, func = callback.split(':')
+                if os.path.exists(fname):
+                    mod = imp.load_source('callback', fname)
+                    if hasattr(mod, func):
+                        return getattr(mod, func)
+        elif hasattr(callback, '__call__'):
+            return callback
+        elif callback is None:
+            return callback
+
+        logger.warn('Invalid callback definition [%s]' % callback)
+        return None
+
+
     def output_init(self):
         '''Initialize netCDF4 output file
 
@@ -309,8 +350,8 @@ class WindsurfWrapper:
 
         # layers and fractions
         if len(cfg_aeolis) > 0:
-            dimensions['layers'] = np.arange(cfg_aeolis['nlayers']+3) * \
-                                   cfg_aeolis['layer_thickness'] # +3 because of dummy layers in AeoLiS
+            dimensions['layers'] = np.arange(cfg_aeolis['nlayers']) * \
+                                   cfg_aeolis['layer_thickness']
             dimensions['fractions'] = cfg_aeolis['grain_size'][:cfg_aeolis['nfractions']]
         else:
             dimensions['layers'] = []
