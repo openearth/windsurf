@@ -30,11 +30,10 @@ parsers
    :private-members:
    :special-members:
 
-cmd
----
+console
+-------
 
-.. automodule:: windsurf.cmd
+.. automodule:: windsurf.console
    :members:
    :private-members:
    :special-members:
-

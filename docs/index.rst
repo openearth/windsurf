@@ -25,7 +25,7 @@ The Windsurf model can be executed from the command-line using the
 windsurf
 ^^^^^^^^
 
-.. automodule:: windsurf.cmd
+.. automodule:: windsurf.console
                 :members:
 
 

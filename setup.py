@@ -22,8 +22,8 @@ setup(
     ],
     test_suite='nose.collector',
     entry_points={'console_scripts': [
-        'windsurf = windsurf.cmd:windsurf',
-        'windsurf-setup = windsurf.cmd:windsurf_setup'
+        'windsurf = windsurf.console:windsurf',
+        'windsurf-setup = windsurf.console:windsurf_setup'
     ]},
     data_files=[
         ('example', [

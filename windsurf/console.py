@@ -12,13 +12,14 @@ def windsurf():
     '''windsurf : a composite model for simulating integrated nearshore and aeolian sediment transport
 
     Usage:
-        windsurf <config> [--restart=FILE] [--verbose=LEVEL]
+        windsurf <config> [--callback=FUNC] [--restart=FILE] [--verbose=LEVEL]
 
     Positional arguments:
         config             configuration file
 
     Options:
         -h, --help         show this help message and exit
+        --callback=FUNC    reference to callback function (e.g. example/callback.py:callback)
         --restart=FILE     use restart file from previous run
         --verbose=LEVEL    print logging messages [default: 30]
 
@@ -33,8 +34,9 @@ def windsurf():
         logging.root.setLevel(logging.NOTSET)
 
     # start model
-    WindsurfWrapper(configfile=arguments['<config>'],
-                    restartfile=arguments['--restart']).run()
+    model = WindsurfWrapper(configfile=arguments['<config>'],
+                            restartfile=arguments['--restart'])
+    model.run(callback=arguments['--callback'])
 
 
 def windsurf_setup():
@@ -55,5 +57,5 @@ def windsurf_setup():
     
         
 if __name__ == '__main__':
-    cmd()
+    windsurf()
     
