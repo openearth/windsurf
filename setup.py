@@ -11,12 +11,11 @@ setup(
     install_requires=[
         'numpy',
         'docopt',
-        'bmi',
     ],
-    setup_requires=[
-        'sphinx',
-        'sphinx_rtd_theme'
-    ],
+    #setup_requires=[
+    #    'sphinx',
+    #    'sphinx_rtd_theme'
+    #],
     tests_require=[
         'nose'
     ],
@@ -25,9 +24,4 @@ setup(
         'windsurf = windsurf.console:windsurf',
         'windsurf-setup = windsurf.console:windsurf_setup'
     ]},
-    data_files=[
-        ('example', [
-            "example/",
-        ])
-    ],
 )
