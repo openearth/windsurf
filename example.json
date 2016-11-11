@@ -1,0 +1,144 @@
+{
+    "time" : {
+        "start" : <float>,
+        "stop" : <float>
+    },
+    "models" : {
+        <model1> : {
+            "engine" : <str>,
+            "configfile" : <str>,
+            "instances" : [
+                <str>,
+                <str>,
+                ...
+            ],
+            "aggregation" : {
+                "variables" : [
+                    <variable1>,
+                    <variable2>,
+                    ...
+                ],
+                "method" : <str>,
+                "options" : {
+                    "weights" : [
+                        <float>,
+                        <float>,
+                        ...
+                    ]
+                }
+            },
+            "nesting" : {
+                "in" : <model2>,
+                "var_x_c" : <str>,
+                "var_y_c" : <str>,
+                "var_x_u" : <str>,
+                "var_y_u" : <str>,
+                "var_x_v" : <str>,
+                "var_y_v" : <str>
+            },
+            "cores" : <int>
+        },
+        <model2> : {
+            ...
+        },
+        ...
+    },
+    "exchange" : {
+        <model1> : {
+            <variable1> : {
+                <model2> : <variable1>,
+                ...
+            },
+            <variable2> : {
+                <model2> : <variable2>,
+                ...
+            },
+            ...
+        },
+        <model2> : {
+            <variable1> : {
+                <model1> : <variable1>,
+                ...
+            },
+            ...
+        },
+        ...
+    },
+    "regimes" : {
+	<regime1> : {
+	    <model1> : {
+                "instances" : [
+                    <instance1>,
+                    <instance2>,
+                    ...
+                ],
+	    },
+	    <model2> : {
+		"instances" : [
+                    ...
+                ],
+	    },
+	    ...
+	},
+	<regime2> : {
+	    <model1> : {
+		"instances" : [
+                    ...
+                ],
+	    },
+	    ...
+	},
+        ...
+    },
+    "scenario" : [
+        {
+	    "time" : <float>,
+	    "regime" : <regime1>
+        },
+        {
+	    "time" : <float>,
+	    "regime" : <regime2>
+        },
+        ...
+    ],
+    "restart" : {
+        "variables" : [
+	    <str>,
+	    <str>,
+	    ...
+        ],
+        "times" : [
+	    <float>,
+	    <float>,
+	    ...
+        ],
+        "backup" : <bool>
+    },
+    "netcdf" : {
+        "file" : <str>,
+        "variables" : [
+            <str>,
+	    <str>,
+	    ...
+        ],
+        "interval" : <float>,
+        "crs" : {
+	    "grid_mapping_name" : <str>,
+	    "epsg_code" : <str>,
+	    "semi_major_axis" : <float>,
+	    "semi_minor_axis" : <float>,
+	    "inverse_flattening" : <float>,
+	    "latitude_of_projection_origin" : <float>,
+	    "longitude_of_projection_origin" : <float>,
+	    "scale_factor_at_projection_origin" : <float>,
+	    "false_easting" : <float>,
+	    "false_northing" : <float>,
+	    "proj4_params" : <str>
+        },
+        "attributes" : {
+	    <attribute1> : <value>,
+	    <attribute2> : <value>,
+	    ...
+        }
+    }
+}
