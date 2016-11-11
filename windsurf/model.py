@@ -12,6 +12,8 @@ import cPickle as pickle
 from bmi.api import IBmi
 from bmi.wrapper import BMIWrapper
 from multiprocessing import Process
+from scipy.spatial import Delaunay
+from scipy.interpolate import LinearNDInterpolator
 
 import netcdf, parsers
 
@@ -565,39 +567,97 @@ class Windsurf(IBmi):
             logger.info('Loading library "%s"...' % name)
 
             # support local engines
-            if props.has_key('engine_path') and \
-               props['engine_path'] and \
-               os.path.isabs(props['engine_path']) and \
-               os.path.exists(props['engine_path']):
-                
-                logger.debug('Adding library "%s" to path...' % props['engine_path'])
-                os.environ['LD_LIBRARY_PATH'] = props['engine_path']
-                os.environ['DYLD_LIBRARY_PATH'] = props['engine_path'] # Darwin
+            self.load_engine_paths(props)
 
-            # initialize bmi wrapper
-            try:
-                # try external library
-                self.models[name]['_wrapper'] = BMIWrapper(
-                    engine=props['engine'],
-                    configfile=props['configfile'] or ''
-                )
-            except RuntimeError:
-                # try python package
-                try:
-                    p, c = props['engine'].rsplit('.', 1)
-                    mod = importlib.import_module(p)
-                    engine = getattr(mod, c)
-                    self.models[name]['_wrapper'] = engine(configfile=props['configfile'] or '')
-                except:
-                    raise RuntimeError('Engine not found [%s]' % props['engine'])
+            # initialize bmi wrapper for each instance
+            self.initialize_instances(name, props)
 
-            # initialize time
-            self.models[name]['_time'] = self.t
-
-            # initialize model engine
-            self.models[name]['_wrapper'].initialize()
+            # initialize grid interpolator
+            self.initialize_interpolator(name, props)
 
     
+    def load_engine_paths(self, props):
+
+        if props.has_key('engine_path') and \
+           props['engine_path'] and \
+           os.path.isabs(props['engine_path']) and \
+           os.path.exists(props['engine_path']):
+                
+            logger.debug('Adding library "%s" to path...' % props['engine_path'])
+            os.environ['LD_LIBRARY_PATH'] = props['engine_path']
+            os.environ['DYLD_LIBRARY_PATH'] = props['engine_path'] # Darwin
+
+
+    def initialize_instances(self, name, props):
+
+        self.model[name]['_instances'] = {}
+
+        if props.has_key('instances') and \
+           props['instances'] and \
+           type(props['instances']) is list:
+
+            for instance in props['instances']:
+                
+                self.model[name]['_instances'][instance] = self.initialize_instance(name, props)
+
+        else:
+            self.model[name]['_instances'][0] = self.initialize_instance(name, props)
+
+        # initialize time
+        self.models[name]['_time'] = self.t
+
+
+    def initialize_instance(self, name, props):
+        
+        try:
+            # try external library
+            instance = BMIWrapper(
+                engine=props['engine'],
+                configfile=props['configfile'] or ''
+            )
+        except RuntimeError:
+            # try python package
+            try:
+                p, c = props['engine'].rsplit('.', 1)
+                mod = importlib.import_module(p)
+                engine = getattr(mod, c)
+                instance = engine(configfile=props['configfile'] or '')
+        except:
+            raise RuntimeError('Engine not found [%s]' % props['engine'])
+
+        # initialize model engine
+        instance.initialize()
+
+        return instance
+
+
+    def initialize_interpolators(self, name, props):
+
+        nesting = self.get_config_value('models', name, 'nesting')
+
+        if nesting:
+            
+            instance = self.model[name]['_instances'].values()[0]
+            self.model[name]['_interpolators'] = {}
+
+            for loc in ['c', 'u', 'v']:
+
+                kx = 'var_x_%s' % loc
+                ky = 'var_y_%s' % loc
+        
+                if nesting.has_key(kx) and nesting.has_key(ky):
+                    x = instance.get_var(nesting[kx])
+                    y = instance.get_var(nesting[ky])
+        
+                    grd = np.asarray((x.flatten(), y.flatten())).T
+                    self.model[name]['_interpolators'][loc] = Delaunay(grd)
+                else:
+                    self.model[name]['_interpolators'][loc] = None
+
+        #F = LinearNDInterpolator(tri, z1.flatten())
+        #z2 = F(np.asarray((x2.flatten(), y2.flatten())).T)
+
+                
     def update(self, dt=-1):
         '''Step model engines into the future
 

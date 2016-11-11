@@ -6,6 +6,7 @@
     "models" : {
         <model1> : {
             "engine" : <str>,
+            "engine_path" : <str>,
             "configfile" : <str>,
             "instances" : [
                 <str>,
